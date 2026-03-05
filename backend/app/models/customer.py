@@ -16,7 +16,7 @@ class Customer(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
     name: Mapped[str] = mapped_column(String(140), nullable=False)
     phone: Mapped[str] = mapped_column(String(30), nullable=False)
 
-    # RELAÇÕES (tem que existir porque Workshop.customers usa back_populates="workshop")
+    # RELACIONAMENTO COM WORKSHOP (resolve o erro do mapper)
     workshop = relationship("Workshop", back_populates="customers")
 
     vehicles = relationship("Vehicle", back_populates="customer", cascade="all, delete-orphan")
@@ -33,12 +33,12 @@ class Vehicle(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
 
     customer_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("customers.id"),
+        ForeignKey("customers.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
 
-    # RELAÇÕES (tem que existir porque Workshop.vehicles usa back_populates="workshop")
+    # RELACIONAMENTO COM WORKSHOP (resolve o erro do mapper)
     workshop = relationship("Workshop", back_populates="vehicles")
 
     customer = relationship("Customer", back_populates="vehicles")

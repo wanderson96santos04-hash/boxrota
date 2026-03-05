@@ -15,6 +15,4 @@ class Workshop(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     customers = relationship("Customer", back_populates="workshop", cascade="all, delete-orphan")
     vehicles = relationship("Vehicle", back_populates="workshop", cascade="all, delete-orphan")
-
-    # IMPORTANTÍSSIMO: não usa backref aqui, usa back_populates pra ficar consistente e não quebrar mapper
     services = relationship("Service", back_populates="workshop", cascade="all, delete-orphan")
