@@ -16,8 +16,8 @@ class Customer(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
     name: Mapped[str] = mapped_column(String(140), nullable=False)
     phone: Mapped[str] = mapped_column(String(30), nullable=False)
 
-    # ✅ FIX: o erro dizia que Customer não tinha a propriedade "workshop"
-    workshop: Mapped["Workshop"] = relationship("Workshop", back_populates="customers")
+    # ✅ faltava isso (para bater com Workshop.customers back_populates="workshop")
+    workshop = relationship("Workshop", back_populates="customers")
 
     vehicles = relationship("Vehicle", back_populates="customer")
     services = relationship("Service", back_populates="customer")
@@ -31,11 +31,14 @@ class Vehicle(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
 
     plate: Mapped[str] = mapped_column(String(16), nullable=False)
     customer_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("customers.id"), nullable=True, index=True
+        UUID(as_uuid=True),
+        ForeignKey("customers.id"),
+        nullable=True,
+        index=True,
     )
 
-    # ✅ (recomendado) evita erro parecido caso Workshop tenha back_populates="workshop" em vehicles
-    workshop: Mapped["Workshop"] = relationship("Workshop", back_populates="vehicles")
+    # ✅ faltava isso (para bater com Workshop.vehicles back_populates="workshop")
+    workshop = relationship("Workshop", back_populates="vehicles")
 
     customer = relationship("Customer", back_populates="vehicles")
     services = relationship("Service", back_populates="vehicle")
