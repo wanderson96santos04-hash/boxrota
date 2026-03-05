@@ -16,4 +16,6 @@ class Workshop(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     users = relationship("User", back_populates="workshop", cascade="all, delete-orphan")
     customers = relationship("Customer", back_populates="workshop", cascade="all, delete-orphan")
     vehicles = relationship("Vehicle", back_populates="workshop", cascade="all, delete-orphan")
-    services = relationship("Service", backref="workshop")
+
+    # melhor usar back_populates para consistência com os outros models
+    services = relationship("Service", back_populates="workshop", cascade="all, delete-orphan")
