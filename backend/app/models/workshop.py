@@ -1,5 +1,3 @@
-import uuid
-
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -14,8 +12,9 @@ class Workshop(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     city: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
     users = relationship("User", back_populates="workshop", cascade="all, delete-orphan")
+
     customers = relationship("Customer", back_populates="workshop", cascade="all, delete-orphan")
     vehicles = relationship("Vehicle", back_populates="workshop", cascade="all, delete-orphan")
 
-    # melhor usar back_populates para consistência com os outros models
+    # IMPORTANTÍSSIMO: não usa backref aqui, usa back_populates pra ficar consistente e não quebrar mapper
     services = relationship("Service", back_populates="workshop", cascade="all, delete-orphan")

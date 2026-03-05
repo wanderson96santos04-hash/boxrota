@@ -16,11 +16,11 @@ class Customer(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
     name: Mapped[str] = mapped_column(String(140), nullable=False)
     phone: Mapped[str] = mapped_column(String(30), nullable=False)
 
-    # ✅ faltava isso (para bater com Workshop.customers back_populates="workshop")
+    # RELAÇÕES (tem que existir porque Workshop.customers usa back_populates="workshop")
     workshop = relationship("Workshop", back_populates="customers")
 
-    vehicles = relationship("Vehicle", back_populates="customer")
-    services = relationship("Service", back_populates="customer")
+    vehicles = relationship("Vehicle", back_populates="customer", cascade="all, delete-orphan")
+    services = relationship("Service", back_populates="customer", cascade="all, delete-orphan")
 
 
 class Vehicle(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
@@ -30,6 +30,7 @@ class Vehicle(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
     )
 
     plate: Mapped[str] = mapped_column(String(16), nullable=False)
+
     customer_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("customers.id"),
@@ -37,8 +38,8 @@ class Vehicle(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
         index=True,
     )
 
-    # ✅ faltava isso (para bater com Workshop.vehicles back_populates="workshop")
+    # RELAÇÕES (tem que existir porque Workshop.vehicles usa back_populates="workshop")
     workshop = relationship("Workshop", back_populates="vehicles")
 
     customer = relationship("Customer", back_populates="vehicles")
-    services = relationship("Service", back_populates="vehicle")
+    services = relationship("Service", back_populates="vehicle", cascade="all, delete-orphan")
