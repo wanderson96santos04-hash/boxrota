@@ -1,0 +1,7 @@
+<svg width="220" height="60" viewBox="0 0 220 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="60" height="60" rx="14" fill="#2F6BFF"/>
+  <path d="M18 40L30 18L42 40H36L30 28L24 40H18Z" fill="white"/>
+  <text x="75" y="38" fill="#F4F7FF" font-family="Space Grotesk, sans-serif" font-size="28" font-weight="700">
+    BoxRota
+  </text>
+</svg>

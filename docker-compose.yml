@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: boxrota_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: boxrota
+      POSTGRES_USER: boxrota
+      POSTGRES_PASSWORD: boxrota
+    ports:
+      - "5432:5432"
+    volumes:
+      - boxrota_pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: boxrota_backend
+    restart: unless-stopped
+
+    # 1) continua lendo o arquivo
+    env_file:
+      - ./backend/.env
+
+    # 2) e FORÇA a variável que o Settings exige
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev_jwt_secret_change_me}
+
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+
+volumes:
+  boxrota_pgdata:
