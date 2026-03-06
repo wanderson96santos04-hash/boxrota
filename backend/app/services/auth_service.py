@@ -7,6 +7,7 @@ from app.core.errors import AppException
 from app.core.security import (
     create_access_token,
     create_refresh_token,
+    decode_token,
     hash_password,
     hash_refresh_secret,
     new_jti,
@@ -21,15 +22,19 @@ from app.services.subscription_service import ensure_subscription
 
 def create_admin_user(db: Session, *, workshop: Workshop, name: str, email: str, password: str) -> User:
     email_norm = email.strip().lower()
+
     exists = (
         db.query(User.id)
-        .filter(User.workshop_id == workshop.id, User.email == email_norm)
+        .filter(
+            User.workshop_id == workshop.id,
+            User.email == email_norm,
+        )
         .first()
     )
     if exists:
         raise AppException(409, "email_in_use", "E-mail já cadastrado nesta oficina.")
 
-    u = User(
+    user = User(
         workshop_id=workshop.id,
         name=name.strip(),
         email=email_norm,
@@ -37,9 +42,9 @@ def create_admin_user(db: Session, *, workshop: Workshop, name: str, email: str,
         password_hash=hash_password(password),
         is_active=True,
     )
-    db.add(u)
+    db.add(user)
     db.flush()
-    return u
+    return user
 
 
 def _issue_tokens(db: Session, *, user: User) -> tuple[str, str]:
@@ -49,7 +54,7 @@ def _issue_tokens(db: Session, *, user: User) -> tuple[str, str]:
 
     expires_at = datetime.now(timezone.utc) + timedelta(days=30)
 
-    rt = RefreshToken(
+    refresh_row = RefreshToken(
         workshop_id=user.workshop_id,
         user_id=user.id,
         jti=jti,
@@ -57,7 +62,7 @@ def _issue_tokens(db: Session, *, user: User) -> tuple[str, str]:
         expires_at=expires_at,
         revoked_at=None,
     )
-    db.add(rt)
+    db.add(refresh_row)
     db.flush()
 
     refresh_jwt = create_refresh_token(
@@ -68,26 +73,37 @@ def _issue_tokens(db: Session, *, user: User) -> tuple[str, str]:
     )
 
     refresh_token = f"{refresh_jwt}.{secret}"
+
     access_token = create_access_token(
         subject=str(user.id),
         workshop_id=str(user.workshop_id),
         role=user.role,
     )
+
     return access_token, refresh_token
 
 
 def login(db: Session, *, workshop_id: uuid.UUID, email: str, password: str) -> tuple[User, str, str]:
     email_norm = email.strip().lower()
+
     user = (
         db.query(User)
-        .filter(User.workshop_id == workshop_id, User.email == email_norm, User.is_active.is_(True))
+        .filter(
+            User.workshop_id == workshop_id,
+            User.email == email_norm,
+            User.is_active.is_(True),
+        )
         .one_or_none()
     )
-    if not user or not verify_password(password, user.password_hash):
+
+    if user is None:
         raise AppException(401, "invalid_credentials", "E-mail ou senha inválidos.")
 
-    access, refresh = _issue_tokens(db, user=user)
-    return user, access, refresh
+    if not verify_password(password, user.password_hash):
+        raise AppException(401, "invalid_credentials", "E-mail ou senha inválidos.")
+
+    access_token, refresh_token = _issue_tokens(db, user=user)
+    return user, access_token, refresh_token
 
 
 def refresh(db: Session, *, refresh_token: str) -> tuple[User, str, str]:
@@ -96,15 +112,6 @@ def refresh(db: Session, *, refresh_token: str) -> tuple[User, str, str]:
 
     refresh_jwt, secret = refresh_token.rsplit(".", 1)
 
-    payload = {}
-    try:
-        payload = create_refresh_token  # type: ignore
-    except Exception:
-        payload = {}
-
-    # decode_token está em app.core.security.decode_token (já usado no core/auth.py)
-    from app.core.security import decode_token  # local import para evitar circular
-
     try:
         payload = decode_token(refresh_jwt)
     except Exception:
@@ -126,7 +133,7 @@ def refresh(db: Session, *, refresh_token: str) -> tuple[User, str, str]:
     except ValueError:
         raise AppException(401, "invalid_token", "Token inválido.")
 
-    rt = (
+    token_row = (
         db.query(RefreshToken)
         .filter(
             RefreshToken.workshop_id == workshop_id,
@@ -135,30 +142,36 @@ def refresh(db: Session, *, refresh_token: str) -> tuple[User, str, str]:
         )
         .one_or_none()
     )
-    if not rt or rt.revoked_at is not None:
+
+    if not token_row or token_row.revoked_at is not None:
         raise AppException(401, "invalid_token", "Token inválido.")
 
     now = datetime.now(timezone.utc)
-    if rt.expires_at <= now:
+
+    if token_row.expires_at <= now:
         raise AppException(401, "expired_token", "Sessão expirada.")
 
-    if not verify_refresh_secret(secret, rt.token_hash):
+    if not verify_refresh_secret(secret, token_row.token_hash):
         raise AppException(401, "invalid_token", "Token inválido.")
 
     user = (
         db.query(User)
-        .filter(User.id == user_id, User.workshop_id == workshop_id, User.is_active.is_(True))
+        .filter(
+            User.id == user_id,
+            User.workshop_id == workshop_id,
+            User.is_active.is_(True),
+        )
         .one_or_none()
     )
     if not user:
         raise AppException(401, "auth_required", "Autenticação necessária.")
 
-    rt.revoked_at = now
-    db.add(rt)
+    token_row.revoked_at = now
+    db.add(token_row)
     db.flush()
 
-    access, new_refresh = _issue_tokens(db, user=user)
-    return user, access, new_refresh
+    access_token, new_refresh_token = _issue_tokens(db, user=user)
+    return user, access_token, new_refresh_token
 
 
 def logout(db: Session, *, refresh_token: str) -> None:
@@ -167,8 +180,6 @@ def logout(db: Session, *, refresh_token: str) -> None:
 
     refresh_jwt, secret = refresh_token.rsplit(".", 1)
 
-    from app.core.security import decode_token  # local import
-
     try:
         payload = decode_token(refresh_jwt)
     except Exception:
@@ -180,6 +191,7 @@ def logout(db: Session, *, refresh_token: str) -> None:
     sub = payload.get("sub")
     wid = payload.get("workshop_id")
     jti = payload.get("jti")
+
     if not sub or not wid or not jti:
         return
 
@@ -189,7 +201,7 @@ def logout(db: Session, *, refresh_token: str) -> None:
     except ValueError:
         return
 
-    rt = (
+    token_row = (
         db.query(RefreshToken)
         .filter(
             RefreshToken.workshop_id == workshop_id,
@@ -198,14 +210,15 @@ def logout(db: Session, *, refresh_token: str) -> None:
         )
         .one_or_none()
     )
-    if not rt or rt.revoked_at is not None:
+
+    if not token_row or token_row.revoked_at is not None:
         return
 
-    if not verify_refresh_secret(secret, rt.token_hash):
+    if not verify_refresh_secret(secret, token_row.token_hash):
         return
 
-    rt.revoked_at = datetime.now(timezone.utc)
-    db.add(rt)
+    token_row.revoked_at = datetime.now(timezone.utc)
+    db.add(token_row)
     db.flush()
 
 
