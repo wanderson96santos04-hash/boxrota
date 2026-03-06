@@ -8,14 +8,39 @@ type LoginResponse = {
   user: any;
   workshop?: {
     id: string;
-    slug: string;
-    name: string;
+    slug?: string;
+    name?: string;
   };
   tokens: {
     access_token: string;
     refresh_token: string;
   };
 };
+
+function extractErrorMessage(err: any): string {
+  const data = err?.response?.data;
+
+  if (!data) return err?.message || "Falha ao entrar.";
+
+  if (typeof data.message === "string" && data.message.trim()) {
+    return data.message;
+  }
+
+  if (typeof data.detail === "string" && data.detail.trim()) {
+    return data.detail;
+  }
+
+  if (Array.isArray(data.detail) && data.detail.length > 0) {
+    const first = data.detail[0];
+    if (typeof first?.msg === "string") return first.msg;
+  }
+
+  if (typeof data.code === "string" && data.code.trim()) {
+    return data.code;
+  }
+
+  return "Falha ao entrar.";
+}
 
 export default function Login() {
   const navigate = useNavigate();
@@ -68,7 +93,7 @@ export default function Login() {
       const user = res.data?.user;
 
       if (!access || !refresh) {
-        throw new Error("Resposta inválida do servidor (tokens ausentes).");
+        throw new Error("Resposta inválida do servidor.");
       }
 
       localStorage.setItem("boxrota_access_token", access);
@@ -89,14 +114,7 @@ export default function Login() {
 
       navigate("/app", { replace: true });
     } catch (err: any) {
-      const apiMessage =
-        err?.response?.data?.message ||
-        err?.response?.data?.detail ||
-        err?.message ||
-        "Falha ao entrar. Verifique oficina, e-mail e senha.";
-
-      setError(apiMessage);
-
+      setError(extractErrorMessage(err));
       localStorage.removeItem("boxrota_access_token");
       localStorage.removeItem("boxrota_refresh_token");
     } finally {
@@ -132,25 +150,20 @@ export default function Login() {
         <form onSubmit={handleLogin} className="mt-6 grid gap-4">
           <Input
             placeholder="Identificador da oficina — ex: minha-oficina"
-            required
             value={slug}
-            onChange={(e: any) => setSlug(e.target.value)}
+            onChange={setSlug}
           />
 
           <Input
             placeholder="E-mail"
-            type="email"
-            required
             value={email}
-            onChange={(e: any) => setEmail(e.target.value)}
+            onChange={setEmail}
           />
 
           <Input
             placeholder="Senha"
-            type="password"
-            required
             value={password}
-            onChange={(e: any) => setPassword(e.target.value)}
+            onChange={setPassword}
           />
 
           <button
