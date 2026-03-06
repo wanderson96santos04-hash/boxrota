@@ -1,5 +1,7 @@
 import uuid
+
 from fastapi import APIRouter, Depends
+from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppException
@@ -13,6 +15,8 @@ from app.services.auth_service import create_admin_user, login, logout, refresh
 from app.services.workshop_service import assert_no_workshops_exist, create_workshop
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 @router.post("/setup", response_model=SetupResponse)
@@ -32,7 +36,12 @@ def setup(payload: SetupPayload, db: Session = Depends(get_db)):
         email=payload.admin.email,
         password=payload.admin.password,
     )
-    user, access, refresh_token = login(db, workshop_id=w.id, email=payload.admin.email, password=payload.admin.password)
+    user, access, refresh_token = login(
+        db,
+        workshop_id=w.id,
+        email=payload.admin.email,
+        password=payload.admin.password,
+    )
     db.commit()
 
     return SetupResponse(
@@ -48,8 +57,15 @@ def login_endpoint(workshop_id: str, body: LoginRequest, db: Session = Depends(g
         wid = uuid.UUID(workshop_id)
     except ValueError:
         raise AppException(400, "invalid_workshop_id", "workshop_id inválido.")
-    user, access, refresh_token = login(db, workshop_id=wid, email=body.email, password=body.password)
+
+    user, access, refresh_token = login(
+        db,
+        workshop_id=wid,
+        email=body.email,
+        password=body.password,
+    )
     db.commit()
+
     return {
         "user": UserOut.model_validate(user),
         "tokens": TokenPair(access_token=access, refresh_token=refresh_token).model_dump(),
@@ -60,6 +76,7 @@ def login_endpoint(workshop_id: str, body: LoginRequest, db: Session = Depends(g
 def refresh_endpoint(body: RefreshRequest, db: Session = Depends(get_db)):
     user, access, refresh_token = refresh(db, refresh_token=body.refresh_token)
     db.commit()
+
     return {
         "user": UserOut.model_validate(user),
         "tokens": TokenPair(access_token=access, refresh_token=refresh_token).model_dump(),
@@ -76,3 +93,40 @@ def logout_endpoint(body: RefreshRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user)):
     return UserOut.model_validate(user)
+
+
+# TEMPORÁRIO: reset de senha sem precisar shell nem banco
+@router.post("/dev-reset-password")
+def dev_reset_password(
+    workshop_id: str,
+    email: str,
+    new_password: str,
+    db: Session = Depends(get_db),
+):
+    try:
+        wid = uuid.UUID(workshop_id)
+    except ValueError:
+        raise AppException(400, "invalid_workshop_id", "workshop_id inválido.")
+
+    user = (
+        db.query(User)
+        .filter(
+            User.workshop_id == wid,
+            User.email == email,
+        )
+        .one_or_none()
+    )
+
+    if not user:
+        raise AppException(404, "user_not_found", "Usuário não encontrado.")
+
+    user.password_hash = pwd_context.hash(new_password)
+    db.add(user)
+    db.commit()
+
+    return {
+        "ok": True,
+        "message": "Senha redefinida com sucesso.",
+        "email": user.email,
+        "workshop_id": str(user.workshop_id),
+    }
