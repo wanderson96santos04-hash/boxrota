@@ -1,8 +1,11 @@
 import axios from "axios";
 
+const envApiUrl = (import.meta as any).env?.VITE_API_URL?.toString().trim();
+
 const BASE_URL =
-  (import.meta as any).env?.VITE_API_URL?.toString().trim() ||
-  "http://localhost:8000/api";
+  envApiUrl && envApiUrl.length > 0
+    ? envApiUrl
+    : "https://boxrota.onrender.com/api";
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -33,6 +36,9 @@ function clearSession() {
   localStorage.removeItem("access_token");
   localStorage.removeItem("boxrota_refresh_token");
   localStorage.removeItem("boxrota_workshop_id");
+  localStorage.removeItem("boxrota_workshop_slug");
+  localStorage.removeItem("boxrota_workshop_name");
+  localStorage.removeItem("boxrota_user_email");
 }
 
 let isRefreshing = false;
@@ -47,7 +53,6 @@ function flushQueue(token: string | null) {
   refreshQueue = [];
 }
 
-// Request: injeta Authorization
 api.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) {
@@ -57,26 +62,22 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response: refresh automático em 401
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const originalRequest = error?.config;
 
-    // Se não tiver config, só retorna
     if (!originalRequest) return Promise.reject(error);
 
     const status = error?.response?.status;
-
-    // Evita loop em endpoints de auth
     const url: string = originalRequest?.url || "";
+
     const isAuthEndpoint =
       url.includes("/auth/login") ||
       url.includes("/auth/refresh") ||
       url.includes("/auth/setup") ||
       url.includes("/auth/logout");
 
-    // Só tenta refresh em 401, e apenas uma vez por request
     if (status !== 401 || isAuthEndpoint || originalRequest._retry) {
       return Promise.reject(error);
     }
@@ -88,10 +89,8 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Marcar retry
     originalRequest._retry = true;
 
-    // Se já tem refresh rolando, enfileira e espera
     if (isRefreshing) {
       return new Promise((resolve, reject) => {
         queueRequest((newToken) => {
@@ -106,7 +105,6 @@ api.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      // Faz refresh
       const refreshRes = await api.post("/auth/refresh", {
         refresh_token: refreshToken,
       });
@@ -122,15 +120,12 @@ api.interceptors.response.use(
       setAccessToken(newAccess);
       setRefreshToken(newRefresh);
 
-      // Libera fila
       flushQueue(newAccess);
 
-      // Re-tenta request original
       originalRequest.headers = originalRequest.headers ?? {};
       originalRequest.headers.Authorization = `Bearer ${newAccess}`;
       return api(originalRequest);
     } catch (e) {
-      // Falhou refresh → encerra sessão
       flushQueue(null);
       clearSession();
       if (typeof window !== "undefined") window.location.href = "/auth/login";
