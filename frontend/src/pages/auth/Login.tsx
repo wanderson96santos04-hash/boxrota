@@ -6,6 +6,11 @@ import api from "../../lib/api";
 
 type LoginResponse = {
   user: any;
+  workshop?: {
+    id: string;
+    slug: string;
+    name: string;
+  };
   tokens: {
     access_token: string;
     refresh_token: string;
@@ -15,10 +20,12 @@ type LoginResponse = {
 export default function Login() {
   const navigate = useNavigate();
 
-  const [workshopId, setWorkshopId] = useState(
-    localStorage.getItem("boxrota_workshop_id") || ""
+  const [slug, setSlug] = useState(
+    localStorage.getItem("boxrota_workshop_slug") || ""
   );
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(
+    localStorage.getItem("boxrota_user_email") || ""
+  );
   const [password, setPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -27,33 +34,38 @@ export default function Login() {
   const canSubmit = useMemo(() => {
     return (
       !loading &&
-      workshopId.trim().length >= 8 &&
+      slug.trim().length >= 2 &&
       email.trim().length >= 3 &&
       password.length >= 1
     );
-  }, [loading, workshopId, email, password]);
+  }, [loading, slug, email, password]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    const wid = workshopId.trim();
-    const em = email.trim();
+    const slugValue = slug.trim().toLowerCase();
+    const emailValue = email.trim().toLowerCase();
 
-    if (!wid) return setError("Informe o workshop_id.");
-    if (!em) return setError("Informe o e-mail.");
+    if (!slugValue) return setError("Informe o identificador da oficina.");
+    if (!emailValue) return setError("Informe o e-mail.");
     if (!password) return setError("Informe a senha.");
 
     try {
       setLoading(true);
 
       const res = await api.post<LoginResponse>(
-        `/auth/login?workshop_id=${encodeURIComponent(wid)}`,
-        { email: em, password }
+        `/auth/login?slug=${encodeURIComponent(slugValue)}`,
+        {
+          email: emailValue,
+          password,
+        }
       );
 
       const access = res.data?.tokens?.access_token;
       const refresh = res.data?.tokens?.refresh_token;
+      const workshop = res.data?.workshop;
+      const user = res.data?.user;
 
       if (!access || !refresh) {
         throw new Error("Resposta inválida do servidor (tokens ausentes).");
@@ -61,18 +73,30 @@ export default function Login() {
 
       localStorage.setItem("boxrota_access_token", access);
       localStorage.setItem("boxrota_refresh_token", refresh);
-      localStorage.setItem("boxrota_workshop_id", wid);
+      localStorage.setItem("boxrota_workshop_slug", slugValue);
+
+      if (workshop?.id) {
+        localStorage.setItem("boxrota_workshop_id", workshop.id);
+      }
+
+      if (workshop?.name) {
+        localStorage.setItem("boxrota_workshop_name", workshop.name);
+      }
+
+      if (user?.email) {
+        localStorage.setItem("boxrota_user_email", user.email);
+      }
 
       navigate("/app", { replace: true });
     } catch (err: any) {
-      const detail = err?.response?.data?.detail;
-      const msg =
-        (typeof detail === "string" && detail) ||
+      const apiMessage =
+        err?.response?.data?.message ||
+        err?.response?.data?.detail ||
         err?.message ||
-        "Falha ao entrar. Verifique workshop_id, e-mail e senha.";
-      setError(msg);
+        "Falha ao entrar. Verifique oficina, e-mail e senha.";
 
-      // se falhar login, evita “meia sessão”
+      setError(apiMessage);
+
       localStorage.removeItem("boxrota_access_token");
       localStorage.removeItem("boxrota_refresh_token");
     } finally {
@@ -83,7 +107,6 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-[var(--bg,#0f172a)] text-[var(--text,#e5e7eb)] flex items-center justify-center px-6">
       <div className="w-full max-w-[560px] rounded-[18px] border border-[var(--border,#1f2937)] bg-[var(--surface,#111827)] p-7 shadow-[0_18px_55px_rgba(0,0,0,0.35)]">
-        {/* Header */}
         <div className="flex items-center gap-3">
           <div className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-600/20 ring-1 ring-[var(--border,#1f2937)]">
             <img src={Logo} alt="BoxRota" className="h-6 w-6" />
@@ -100,20 +123,18 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Erro */}
         {error && (
           <div className="mt-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-[var(--title,#fff)]">
             {error}
           </div>
         )}
 
-        {/* Form */}
         <form onSubmit={handleLogin} className="mt-6 grid gap-4">
           <Input
-            placeholder="workshop_id (UUID) — ex: 7f0b..."
+            placeholder="Identificador da oficina — ex: minha-oficina"
             required
-            value={workshopId}
-            onChange={(e: any) => setWorkshopId(e.target.value)}
+            value={slug}
+            onChange={(e: any) => setSlug(e.target.value)}
           />
 
           <Input
@@ -132,7 +153,6 @@ export default function Login() {
             onChange={(e: any) => setPassword(e.target.value)}
           />
 
-          {/* BOTÃO */}
           <button
             type="submit"
             disabled={!canSubmit}
@@ -141,10 +161,9 @@ export default function Login() {
             {loading ? "Entrando..." : "Entrar no painel"}
           </button>
 
-          {/* aviso */}
           <div className="mt-2 rounded-2xl border border-[var(--border,#1f2937)] bg-white/5 p-4 text-xs text-[var(--muted,#9ca3af)]">
-            Dica: o <span className="font-semibold">workshop_id</span> é o UUID da
-            sua oficina (usado no endpoint de login).
+            Use o identificador da sua oficina, por exemplo:
+            <span className="ml-1 font-semibold">minha-oficina</span>
           </div>
 
           <Link
