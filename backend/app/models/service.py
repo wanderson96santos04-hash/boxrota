@@ -11,7 +11,8 @@ from app.models.base import Base, TenantMixin, TimestampMixin, UUIDPrimaryKeyMix
 class Service(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
     __tablename__ = "services"
 
-    # Relacionamentos principais (batem com Customer.services e Vehicle.services)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     customer_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("customers.id"),
@@ -26,21 +27,18 @@ class Service(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
         index=True,
     )
 
-    # Campos comuns de serviço (se você já tiver outros, pode adicionar depois)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(String(30), default="open", nullable=False)
+    # ✅ isso aqui resolve: "Service has no property workshop"
+    workshop = relationship("Workshop", back_populates="services")
 
-    total: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
-
-    # ✅ IMPORTANTÍSSIMO: isso resolve o erro do log
-    # Alguém no projeto está usando back_populates="quotes" apontando pra Service.quotes
-    quotes = relationship("Quote", back_populates="service", cascade="all, delete-orphan")
-
-    # ✅ IMPORTANTÍSSIMO: isso resolve o erro de import do ServiceItem
-    items = relationship("ServiceItem", back_populates="service", cascade="all, delete-orphan")
-
+    # ✅ isso mantém Customer/Vehicle ok
     customer = relationship("Customer", back_populates="services")
     vehicle = relationship("Vehicle", back_populates="services")
+
+    # ✅ isso resolve: "Service has no property quotes"
+    quotes = relationship("Quote", back_populates="service", cascade="all, delete-orphan")
+
+    # ✅ itens do serviço
+    items = relationship("ServiceItem", back_populates="service", cascade="all, delete-orphan")
 
 
 class ServiceItem(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
@@ -48,14 +46,14 @@ class ServiceItem(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
 
     service_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("services.id", ondelete="CASCADE"),
+        ForeignKey("services.id"),
         nullable=False,
         index=True,
     )
 
-    name: Mapped[str] = mapped_column(String(140), nullable=False)
-    quantity: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=1, nullable=False)
-    unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
-    total: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
+    title: Mapped[str] = mapped_column(String(140), nullable=False)
+    qty: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=1)
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
 
+    # relacionamento
     service = relationship("Service", back_populates="items")

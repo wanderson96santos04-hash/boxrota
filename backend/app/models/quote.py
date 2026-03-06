@@ -18,7 +18,7 @@ class Quote(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
 
     service_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("services.id", ondelete="CASCADE"),
+        ForeignKey("services.id"),
         nullable=False,
         index=True,
     )
@@ -34,5 +34,6 @@ class Quote(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
     subtotal_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
 
-    # ✅ bate com Service.quotes (no service.py)
+    # ✅ relações corretas
+    workshop = relationship("Workshop", back_populates="quotes")
     service = relationship("Service", back_populates="quotes")

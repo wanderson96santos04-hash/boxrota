@@ -15,4 +15,9 @@ class Workshop(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     customers = relationship("Customer", back_populates="workshop", cascade="all, delete-orphan")
     vehicles = relationship("Vehicle", back_populates="workshop", cascade="all, delete-orphan")
+
+    # ✅ TIRA backref e usa back_populates (pra não quebrar)
     services = relationship("Service", back_populates="workshop", cascade="all, delete-orphan")
+
+    # ✅ pro Quote também (se você usa quotes)
+    quotes = relationship("Quote", back_populates="workshop", cascade="all, delete-orphan")
