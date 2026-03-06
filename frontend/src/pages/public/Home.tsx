@@ -158,7 +158,7 @@ export default function Home() {
 
             <div className="flex items-center gap-2">
               <Link
-                to="/auth/login"
+                to="/auth/setup"
                 className="rounded-xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.03)] px-4 py-2 text-sm font-semibold text-[var(--text)] hover:bg-[color:rgba(255,255,255,0.06)] hover:text-[var(--title)]"
               >
                 Entrar

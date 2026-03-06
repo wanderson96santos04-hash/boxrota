@@ -3,6 +3,7 @@ import { Navigate, Outlet, createBrowserRouter } from "react-router-dom";
 
 import PublicHome from "../pages/public/Home";
 import Login from "../pages/auth/Login";
+import Setup from "../pages/auth/Setup";
 
 import AppShell from "../components/layout/AppShell";
 import Dashboard from "../pages/app/Dashboard";
@@ -25,6 +26,11 @@ function getAccessToken() {
 function clearSession() {
   localStorage.removeItem("boxrota_access_token");
   localStorage.removeItem("access_token");
+  localStorage.removeItem("boxrota_refresh_token");
+  localStorage.removeItem("boxrota_workshop_id");
+  localStorage.removeItem("boxrota_workshop_slug");
+  localStorage.removeItem("boxrota_workshop_name");
+  localStorage.removeItem("boxrota_user_email");
 }
 
 function parseJwtPayload(token: string): any | null {
@@ -32,9 +38,11 @@ function parseJwtPayload(token: string): any | null {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
 
-    // base64url -> base64
     const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, "=");
+    const padded = base64.padEnd(
+      base64.length + ((4 - (base64.length % 4)) % 4),
+      "="
+    );
 
     const json = atob(padded);
     return JSON.parse(json);
@@ -43,14 +51,6 @@ function parseJwtPayload(token: string): any | null {
   }
 }
 
-/**
- * Regra de sessão:
- * - token existe
- * - token parece JWT
- * - se tiver "exp", não pode estar expirado
- *
- * Não valida assinatura (isso é papel do backend), mas evita UX ruim de token expirado.
- */
 function hasValidSession() {
   const token = getAccessToken();
   if (!token || token.length < 20) return false;
@@ -58,7 +58,6 @@ function hasValidSession() {
   const payload = parseJwtPayload(token);
   if (!payload) return false;
 
-  // Se o token tiver exp, valida expiração
   if (typeof payload.exp === "number") {
     const nowSec = Math.floor(Date.now() / 1000);
     if (payload.exp <= nowSec) return false;
@@ -69,22 +68,27 @@ function hasValidSession() {
 
 function Protected() {
   if (!hasValidSession()) {
-    // evita “meia sessão” quebrada em produção
     clearSession();
     return <Navigate to="/auth/login" replace />;
   }
   return <Outlet />;
 }
 
-function AuthOnlyPublicLogin() {
-  // Se já está logado, não deixa ficar na tela de login
+function AuthOnlyPublic() {
   if (hasValidSession()) return <Navigate to="/app" replace />;
-  return <Login />;
+  return <Outlet />;
 }
 
 export const router = createBrowserRouter([
   { path: "/", element: <PublicHome /> },
-  { path: "/auth/login", element: <AuthOnlyPublicLogin /> },
+  {
+    path: "/auth",
+    element: <AuthOnlyPublic />,
+    children: [
+      { path: "login", element: <Login /> },
+      { path: "setup", element: <Setup /> },
+    ],
+  },
   {
     path: "/app",
     element: <Protected />,
