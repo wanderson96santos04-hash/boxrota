@@ -1,8 +1,55 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import Logo from "../../assets/logo-boxrota.svg";
 import { Input } from "../../components/ui/Input";
 import api from "../../lib/api";
-import Logo from "../../assets/logo-boxrota.svg";
+
+type SetupResponse = {
+  workshop: {
+    id: string;
+    name: string;
+    slug?: string;
+  };
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  tokens: {
+    access_token: string;
+    refresh_token: string;
+    token_type?: string;
+  };
+};
+
+function extractErrorMessage(err: any): string {
+  const data = err?.response?.data;
+
+  if (!data) {
+    return err?.message || "Erro ao criar conta.";
+  }
+
+  if (typeof data.message === "string" && data.message.trim()) {
+    return data.message;
+  }
+
+  if (typeof data.detail === "string" && data.detail.trim()) {
+    return data.detail;
+  }
+
+  if (Array.isArray(data.detail) && data.detail.length > 0) {
+    const first = data.detail[0];
+    if (typeof first?.msg === "string") {
+      return first.msg;
+    }
+  }
+
+  if (typeof data.code === "string" && data.code.trim()) {
+    return data.code;
+  }
+
+  return "Erro ao criar conta.";
+}
 
 export default function Setup() {
   const navigate = useNavigate();
@@ -22,58 +69,82 @@ export default function Setup() {
     e.preventDefault();
     setError(null);
 
+    const payload = {
+      workshop: {
+        name: workshopName.trim(),
+        phone: phone.trim(),
+        city: city.trim(),
+      },
+      admin: {
+        name: adminName.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+      },
+    };
+
     try {
       setLoading(true);
 
-      const res = await api.post("/auth/setup", {
-        workshop_name: workshopName,
-        phone,
-        city,
-        admin_name: adminName,
-        email,
-        password,
-      });
+      const res = await api.post<SetupResponse>("/auth/setup", payload);
 
-      const tokens = res.data?.tokens;
+      const access = res.data?.tokens?.access_token;
+      const refresh = res.data?.tokens?.refresh_token;
+      const workshop = res.data?.workshop;
+      const user = res.data?.user;
 
-      if (!tokens?.access_token) {
-        throw new Error("Erro ao criar conta.");
+      if (!access || !refresh || !workshop?.id) {
+        throw new Error("Resposta inválida ao criar conta.");
       }
 
-      localStorage.setItem("boxrota_access_token", tokens.access_token);
-      localStorage.setItem("boxrota_refresh_token", tokens.refresh_token);
+      localStorage.setItem("boxrota_access_token", access);
+      localStorage.setItem("boxrota_refresh_token", refresh);
+      localStorage.setItem("boxrota_workshop_id", workshop.id);
+
+      if (workshop.slug) {
+        localStorage.setItem("boxrota_workshop_slug", workshop.slug);
+      }
+
+      if (workshop.name) {
+        localStorage.setItem("boxrota_workshop_name", workshop.name);
+      }
+
+      if (user?.email) {
+        localStorage.setItem("boxrota_user_email", user.email);
+      }
 
       navigate("/app", { replace: true });
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.detail ||
-        err?.message ||
-        "Erro ao criar conta.";
-      setError(msg);
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center px-6">
-      <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-8">
+    <div className="min-h-screen bg-[var(--bg,#0b1020)] text-[var(--text,#e5e7eb)] flex items-center justify-center px-6">
+      <div className="w-full max-w-[560px] rounded-[22px] border border-[var(--border,#1f2937)] bg-[var(--surface,#111827)] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+        <div className="flex items-center gap-4">
+          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-600/20 ring-1 ring-[var(--border,#1f2937)]">
+            <img src={Logo} alt="BoxRota" className="h-7 w-7" />
+          </div>
 
-        <div className="flex items-center gap-3 mb-6">
-          <img src={Logo} className="h-8" />
-          <div className="font-semibold text-lg text-[var(--title)]">
-            Criar oficina
+          <div className="flex items-center gap-8">
+            <div className="text-2xl font-bold text-[var(--title,#fff)]">
+              BoxRota
+            </div>
+            <div className="text-2xl font-bold text-[var(--title,#fff)]">
+              Criar oficina
+            </div>
           </div>
         </div>
 
         {error && (
-          <div className="mb-4 text-sm text-red-400">
+          <div className="mt-5 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-
+        <form onSubmit={handleSubmit} className="mt-8 grid gap-4">
           <Input
             placeholder="Nome da oficina"
             value={workshopName}
@@ -113,12 +184,20 @@ export default function Setup() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full h-12 rounded-xl bg-[var(--primary)] text-white font-semibold"
+            className="mt-2 h-14 w-full rounded-2xl bg-[var(--primary,#3b82f6)] text-white font-semibold text-sm hover:opacity-95 disabled:opacity-60"
           >
             {loading ? "Criando..." : "Criar conta"}
           </button>
-
         </form>
+
+        <div className="mt-6 text-center">
+          <Link
+            to="/"
+            className="text-sm font-semibold text-[var(--muted,#9ca3af)] hover:text-white"
+          >
+            Voltar para a landing
+          </Link>
+        </div>
       </div>
     </div>
   );
