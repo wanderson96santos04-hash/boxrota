@@ -16,7 +16,7 @@ router = APIRouter(prefix="/parts", tags=["parts"])
 
 class PartCreate(BaseModel):
     name: str = Field(min_length=2, max_length=160)
-    sku: Optional[str] = Field(default=None, max_length=80)
+    sku: Optional[str] = Field(default=None, max_length=60)
     price: Decimal = Field(default=Decimal("0"), ge=0)
     stock_qty: int = Field(default=0, ge=0)
 
@@ -24,7 +24,7 @@ class PartCreate(BaseModel):
 class PartOut(BaseModel):
     id: str
     name: str
-    sku: Optional[str] = None
+    sku: str
     price: float
     stock_qty: int
 
@@ -34,8 +34,8 @@ class PartOut(BaseModel):
             id=str(part.id),
             name=part.name,
             sku=part.sku,
-            price=float(part.price or 0),
-            stock_qty=int(part.stock_qty or 0),
+            price=float(part.suggested_price or part.cost_price or 0),
+            stock_qty=0,
         )
 
 
@@ -46,11 +46,7 @@ def list_parts(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    query = (
-        db.query(Part)
-        .filter(Part.workshop_id == user.workshop_id)
-        .order_by(Part.name.asc())
-    )
+    query = db.query(Part).order_by(Part.name.asc())
 
     if q and q.strip():
         term = f"%{q.strip().lower()}%"
@@ -71,12 +67,23 @@ def create_part(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    clean_name = data.name.strip()
+
+    generated_sku = (
+        data.sku.strip().upper()
+        if data.sku and data.sku.strip()
+        else clean_name.upper().replace(" ", "-")[:60]
+    )
+
     part = Part(
-        workshop_id=user.workshop_id,
-        name=data.name.strip(),
-        sku=(data.sku.strip().upper() if data.sku and data.sku.strip() else None),
-        price=Decimal(data.price or 0),
-        stock_qty=int(data.stock_qty or 0),
+        sku=generated_sku,
+        name=clean_name,
+        brand="Manual",
+        category="Oficina",
+        vehicle_compat="Universal",
+        cost_price=Decimal(data.price or 0),
+        suggested_price=Decimal(data.price or 0),
+        active=True,
     )
 
     db.add(part)
