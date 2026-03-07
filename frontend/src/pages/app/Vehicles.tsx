@@ -12,6 +12,12 @@ type Vehicle = {
   created_at: string;
 };
 
+type CustomerOption = {
+  id: string;
+  name: string;
+  phone?: string | null;
+};
+
 function normPlatePreview(v: string) {
   return (v || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
 }
@@ -23,6 +29,10 @@ export default function Vehicles() {
 
   const [plate, setPlate] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [customersLoading, setCustomersLoading] = useState(false);
+  const [customerId, setCustomerId] = useState("");
 
   async function load(term?: string) {
     setLoading(true);
@@ -39,8 +49,37 @@ export default function Vehicles() {
     }
   }
 
+  async function loadCustomers() {
+    setCustomersLoading(true);
+    try {
+      const res = await api.get("/customers", {
+        params: { limit: 100 },
+      });
+
+      const raw = Array.isArray(res.data) ? res.data : [];
+      const mapped = raw
+        .map((item: any) => ({
+          id: String(item?.id ?? ""),
+          name: String(item?.name ?? "").trim(),
+          phone:
+            typeof item?.phone === "string" && item.phone.trim()
+              ? item.phone.trim()
+              : null,
+        }))
+        .filter((item: CustomerOption) => item.id && item.name);
+
+      setCustomers(mapped);
+    } catch (e) {
+      console.error(e);
+      setCustomers([]);
+    } finally {
+      setCustomersLoading(false);
+    }
+  }
+
   useEffect(() => {
     load();
+    loadCustomers();
   }, []);
 
   useEffect(() => {
@@ -54,8 +93,13 @@ export default function Vehicles() {
 
     setSaving(true);
     try {
-      await api.post("/vehicles", { plate: p });
+      await api.post("/vehicles", {
+        plate: p,
+        customer_id: customerId || null,
+      });
+
       setPlate("");
+      setCustomerId("");
       await load(q);
     } catch (e) {
       console.error(e);
@@ -79,12 +123,34 @@ export default function Vehicles() {
             value={plate}
             onChange={(v) => setPlate(normPlatePreview(v))}
           />
+
+          <div className="sm:col-span-2">
+            <select
+              value={customerId}
+              onChange={(e) => setCustomerId(e.target.value)}
+              className="h-12 w-full rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.03)] px-4 text-sm text-[var(--title)] outline-none focus:border-[color:rgba(47,107,255,0.55)] focus:ring-2 focus:ring-[color:rgba(47,107,255,0.18)]"
+            >
+              <option value="">
+                {customersLoading
+                  ? "Carregando clientes..."
+                  : "Selecionar cliente (opcional)"}
+              </option>
+
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                  {c.phone ? ` • ${c.phone}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button
             onClick={create}
             disabled={saving}
-            className="h-12 rounded-2xl bg-[var(--primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--primaryHover)] disabled:opacity-60 sm:col-span-2"
+            className="h-12 rounded-2xl bg-[var(--primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--primaryHover)] disabled:opacity-60 sm:col-span-3"
           >
-            {saving ? "Salvando..." : "Cadastrar veículo (1 campo)"}
+            {saving ? "Salvando..." : "Cadastrar veículo"}
           </button>
         </div>
 
@@ -105,7 +171,8 @@ export default function Vehicles() {
                 Nenhum veículo cadastrado
               </div>
               <div className="mt-2 text-sm text-[var(--muted)]">
-                Cadastre uma placa e abra a OS na sequência — fluxo de oficina.
+                Cadastre uma placa e vincule um cliente para abrir a OS mais
+                rápido.
               </div>
             </div>
           ) : (
@@ -122,6 +189,7 @@ export default function Vehicles() {
                       </div>
                       <Badge tone="neutral">Histórico</Badge>
                     </div>
+
                     <div className="mt-1 text-xs text-[var(--muted)]">
                       {v.customer_name
                         ? `${v.customer_name}${v.customer_phone ? ` • ${v.customer_phone}` : ""}`
