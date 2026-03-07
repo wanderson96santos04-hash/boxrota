@@ -35,7 +35,7 @@ class PartOut(BaseModel):
             name=part.name,
             sku=part.sku,
             price=float(part.suggested_price or part.cost_price or 0),
-            stock_qty=0,
+            stock_qty=int(part.stock_qty or 0),
         )
 
 
@@ -83,6 +83,7 @@ def create_part(
         vehicle_compat="Universal",
         cost_price=Decimal(data.price or 0),
         suggested_price=Decimal(data.price or 0),
+        stock_qty=data.stock_qty,
         active=True,
     )
 
