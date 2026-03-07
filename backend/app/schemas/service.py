@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.enums import ServiceStatus
 
@@ -66,13 +66,25 @@ class ServiceUpdate(BaseModel):
     notes: Optional[str] = Field(default=None, max_length=5000)
     labor_amount: Optional[Decimal] = Field(default=None)
 
-    def validate_status(self) -> Optional[str]:
-        if self.status is None:
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
             return None
-        s = str(self.status).strip().lower()
-        allowed = {ServiceStatus.in_progress.value, ServiceStatus.finalized.value}
+
+        s = str(value).strip().lower()
+        allowed = {
+            ServiceStatus.open.value,
+            ServiceStatus.in_progress.value,
+            ServiceStatus.waiting_parts.value,
+            ServiceStatus.completed.value,
+            ServiceStatus.delivered.value,
+            ServiceStatus.canceled.value,
+        }
+
         if s not in allowed:
             raise ValueError("status inválido")
+
         return s
 
 
