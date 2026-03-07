@@ -28,7 +28,7 @@ type Service = {
 
 function money(v: number) {
   try {
-    return (Number(v || 0)).toLocaleString("pt-BR", {
+    return Number(v || 0).toLocaleString("pt-BR", {
       style: "currency",
       currency: "BRL",
     });
@@ -38,11 +38,15 @@ function money(v: number) {
 }
 
 function toneFromStatus(status: string) {
-  return status === "finalized" ? "success" : "primary";
+  if (status === "completed") return "success";
+  if (status === "waiting_parts") return "warning";
+  return "primary";
 }
 
 function labelFromStatus(status: string) {
-  return status === "finalized" ? "Finalizada" : "Em andamento";
+  if (status === "completed") return "Finalizada";
+  if (status === "waiting_parts") return "Aguardando peça";
+  return "Em andamento";
 }
 
 export default function ServiceDetail() {
@@ -63,6 +67,7 @@ export default function ServiceDetail() {
 
   async function load() {
     if (!id) return;
+
     setLoading(true);
     try {
       const res = await api.get(`/services/${id}`);
@@ -83,12 +88,15 @@ export default function ServiceDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const canEdit = useMemo(() => (service?.status !== "finalized"), [service?.status]);
+  const canEdit = useMemo(() => {
+    return service?.status !== "completed";
+  }, [service?.status]);
 
   async function addItem() {
     if (!service || !id) return;
-    const d = desc.trim();
-    if (!d) return;
+
+    const description = desc.trim();
+    if (!description) return;
 
     const q = Math.max(1, Math.min(999, parseInt(qty || "1", 10) || 1));
     const u = Number(String(unit || "0").replace(",", ".")) || 0;
@@ -96,10 +104,11 @@ export default function ServiceDetail() {
     setSaving(true);
     try {
       await api.post(`/services/${id}/items`, {
-        description: d,
+        description,
         qty: q,
         unit_price: u,
       });
+
       setDesc("");
       setQty("1");
       setUnit("0");
@@ -114,14 +123,15 @@ export default function ServiceDetail() {
   async function saveBasics() {
     if (!service || !id) return;
 
-    const l = Number(String(labor || "0").replace(",", ".")) || 0;
+    const laborAmount = Number(String(labor || "0").replace(",", ".")) || 0;
 
     setSaving(true);
     try {
       await api.patch(`/services/${id}`, {
-        labor_amount: l,
+        labor_amount: laborAmount,
         notes: notes.trim() || null,
       });
+
       await load();
     } catch (e) {
       console.error(e);
@@ -132,9 +142,10 @@ export default function ServiceDetail() {
 
   async function finalize() {
     if (!service || !id) return;
+
     setSaving(true);
     try {
-      await api.patch(`/services/${id}`, { status: "finalized" });
+      await api.post(`/services/${id}/complete`);
       await load();
     } catch (e) {
       console.error(e);
@@ -155,19 +166,31 @@ export default function ServiceDetail() {
     <div className="space-y-4">
       <Card
         title={`OS • ${service.vehicle.plate}`}
-        subtitle={service.customer?.name ? service.customer.name : "Cliente não informado"}
-        right={<Badge tone={toneFromStatus(service.status) as any}>{labelFromStatus(service.status)}</Badge>}
+        subtitle={
+          service.customer?.name
+            ? `${service.customer.name}${service.customer.phone ? ` • ${service.customer.phone}` : ""}`
+            : "Cliente não informado"
+        }
+        right={
+          <Badge tone={toneFromStatus(service.status) as any}>
+            {labelFromStatus(service.status)}
+          </Badge>
+        }
       >
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4">
-            <div className="text-xs font-medium text-[var(--muted)]">Subtotal (itens)</div>
+            <div className="text-xs font-medium text-[var(--muted)]">
+              Subtotal (itens)
+            </div>
             <div className="mt-2 text-xl font-semibold text-[var(--title)]">
               {money(Number(service.subtotal_amount || 0))}
             </div>
           </div>
 
           <div className="rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4">
-            <div className="text-xs font-medium text-[var(--muted)]">Mão de obra</div>
+            <div className="text-xs font-medium text-[var(--muted)]">
+              Mão de obra
+            </div>
             <div className="mt-2 text-xl font-semibold text-[var(--title)]">
               {money(Number(service.labor_amount || 0))}
             </div>
@@ -184,7 +207,7 @@ export default function ServiceDetail() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <Link
             to="/app/services"
-            className="h-12 inline-flex items-center justify-center rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] px-4 text-sm font-semibold text-[var(--title)] hover:bg-[color:rgba(255,255,255,0.05)]"
+            className="inline-flex h-12 items-center justify-center rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] px-4 text-sm font-semibold text-[var(--title)] hover:bg-[color:rgba(255,255,255,0.05)]"
           >
             Voltar
           </Link>
@@ -194,12 +217,15 @@ export default function ServiceDetail() {
             disabled={!canEdit || saving}
             className="h-12 rounded-2xl bg-[var(--success)] px-4 text-sm font-semibold text-white hover:bg-[var(--successHover)] disabled:opacity-60"
           >
-            Finalizar OS (gera retorno automático depois)
+            Finalizar OS
           </button>
         </div>
       </Card>
 
-      <Card title="Itens da OS" subtitle="Peças e serviços (um toque para adicionar)">
+      <Card
+        title="Itens da OS"
+        subtitle="Peças e serviços lançados na ordem"
+      >
         <div className="grid gap-3 sm:grid-cols-4">
           <Input
             placeholder="Descrição (ex: Pastilha de freio)"
@@ -220,10 +246,11 @@ export default function ServiceDetail() {
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <Link
             to="/app/marketplace"
-            className="h-12 inline-flex items-center justify-center rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] px-4 text-sm font-semibold text-[var(--title)] hover:bg-[color:rgba(255,255,255,0.05)]"
+            className="inline-flex h-12 items-center justify-center rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] px-4 text-sm font-semibold text-[var(--title)] hover:bg-[color:rgba(255,255,255,0.05)]"
           >
             Adicionar do Marketplace
           </Link>
+
           <div className="rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] px-4 py-3 text-xs text-[var(--muted)]">
             Fluxo: OS → Marketplace → Selecionar → Adicionar
           </div>
@@ -254,6 +281,7 @@ export default function ServiceDetail() {
                       {it.qty} × {money(Number(it.unit_price || 0))}
                     </div>
                   </div>
+
                   <div className="text-right">
                     <div className="text-sm font-semibold text-[var(--title)]">
                       {money(Number(it.total_price || 0))}
@@ -266,15 +294,23 @@ export default function ServiceDetail() {
         </div>
       </Card>
 
-      <Card title="Mão de obra e observações" subtitle="Poucos campos. Direto ao ponto.">
+      <Card
+        title="Mão de obra e descrição do serviço"
+        subtitle="Poucos campos. Direto ao ponto."
+      >
         <div className="grid gap-3 sm:grid-cols-3">
-          <Input placeholder="Mão de obra (R$)" value={labor} onChange={setLabor} />
+          <Input
+            placeholder="Mão de obra (R$)"
+            value={labor}
+            onChange={setLabor}
+          />
+
           <div className="sm:col-span-2">
             <div className="relative">
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Observações (opcional)"
+                placeholder="Descrição / observações (ex: Troca de óleo, troca de pastilha, alinhamento)"
                 className="min-h-[48px] w-full rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.03)] px-4 py-3 text-sm text-[var(--title)] placeholder:text-[var(--muted)] outline-none focus:border-[color:rgba(47,107,255,0.55)] focus:ring-2 focus:ring-[color:rgba(47,107,255,0.18)]"
               />
             </div>
@@ -289,6 +325,7 @@ export default function ServiceDetail() {
           >
             Salvar
           </button>
+
           <div className="rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] px-4 py-3 text-xs text-[var(--muted)]">
             Total recalcula automaticamente ao salvar e ao adicionar itens.
           </div>
