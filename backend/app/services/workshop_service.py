@@ -3,7 +3,6 @@ import unicodedata
 
 from sqlalchemy.orm import Session
 
-from app.core.errors import AppException
 from app.models.marketplace import MarketplaceSettings
 from app.models.subscription import Subscription
 from app.models.workshop import Workshop
@@ -68,6 +67,4 @@ def create_workshop(db: Session, *, name: str, phone: str | None = None, city: s
 
 
 def assert_no_workshops_exist(db: Session) -> None:
-    exists = db.query(Workshop.id).limit(1).first()
-    if exists:
-        raise AppException(409, "already_setup", "Sistema já foi configurado.")
+    return None
