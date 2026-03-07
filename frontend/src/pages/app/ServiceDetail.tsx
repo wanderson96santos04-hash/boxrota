@@ -26,6 +26,14 @@ type Service = {
   items: ServiceItem[];
 };
 
+type Part = {
+  id: string;
+  name: string;
+  sku?: string | null;
+  price: number;
+  stock_qty: number;
+};
+
 function money(v: number) {
   try {
     return Number(v || 0).toLocaleString("pt-BR", {
@@ -55,15 +63,20 @@ export default function ServiceDetail() {
 
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const [desc, setDesc] = useState("");
   const [qty, setQty] = useState("1");
   const [unit, setUnit] = useState("0");
 
+  const [partSearch, setPartSearch] = useState("");
+  const [parts, setParts] = useState<Part[]>([]);
+  const [partsLoading, setPartsLoading] = useState(false);
+  const [selectedPartId, setSelectedPartId] = useState("");
+  const [partQty, setPartQty] = useState("1");
+
   const [labor, setLabor] = useState("0");
   const [notes, setNotes] = useState("");
-
-  const [saving, setSaving] = useState(false);
 
   async function load() {
     if (!id) return;
@@ -83,16 +96,52 @@ export default function ServiceDetail() {
     }
   }
 
+  async function loadParts(term?: string) {
+    setPartsLoading(true);
+    try {
+      const res = await api.get("/parts", {
+        params: {
+          q: term?.trim() || undefined,
+          limit: 30,
+        },
+      });
+
+      const rows = Array.isArray(res.data) ? res.data : [];
+      setParts(rows);
+    } catch (e) {
+      console.error(e);
+      setParts([]);
+    } finally {
+      setPartsLoading(false);
+    }
+  }
+
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  useEffect(() => {
+    loadParts();
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      loadParts(partSearch);
+    }, 250);
+
+    return () => clearTimeout(t);
+  }, [partSearch]);
+
   const canEdit = useMemo(() => {
     return service?.status !== "completed";
   }, [service?.status]);
 
-  async function addItem() {
+  const selectedPart = useMemo(() => {
+    return parts.find((p) => p.id === selectedPartId) || null;
+  }, [parts, selectedPartId]);
+
+  async function addManualItem() {
     if (!service || !id) return;
 
     const description = desc.trim();
@@ -113,6 +162,32 @@ export default function ServiceDetail() {
       setQty("1");
       setUnit("0");
       await load();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function addCatalogPart() {
+    if (!service || !id || !selectedPart) return;
+
+    const q = Math.max(1, Math.min(999, parseInt(partQty || "1", 10) || 1));
+
+    setSaving(true);
+    try {
+      await api.post(`/services/${id}/items`, {
+        part_id: selectedPart.id,
+        description: selectedPart.name,
+        qty: q,
+        unit_price: Number(selectedPart.price || 0),
+      });
+
+      setSelectedPartId("");
+      setPartQty("1");
+      setPartSearch("");
+      await load();
+      await loadParts();
     } catch (e) {
       console.error(e);
     } finally {
@@ -168,7 +243,9 @@ export default function ServiceDetail() {
         title={`OS • ${service.vehicle.plate}`}
         subtitle={
           service.customer?.name
-            ? `${service.customer.name}${service.customer.phone ? ` • ${service.customer.phone}` : ""}`
+            ? `${service.customer.name}${
+                service.customer.phone ? ` • ${service.customer.phone}` : ""
+              }`
             : "Cliente não informado"
         }
         right={
@@ -223,47 +300,130 @@ export default function ServiceDetail() {
       </Card>
 
       <Card
-        title="Itens da OS"
-        subtitle="Peças e serviços lançados na ordem"
+        title="Adicionar peça do catálogo"
+        subtitle="Fluxo profissional: escolher peça já cadastrada e lançar na OS."
+      >
+        <div className="grid gap-3 sm:grid-cols-4">
+          <div className="sm:col-span-2">
+            <Input
+              placeholder="Buscar peça por nome ou SKU..."
+              value={partSearch}
+              onChange={setPartSearch}
+            />
+          </div>
+
+          <div>
+            <Input placeholder="Qtd" value={partQty} onChange={setPartQty} />
+          </div>
+
+          <button
+            onClick={addCatalogPart}
+            disabled={!canEdit || saving || !selectedPart}
+            className="h-12 rounded-2xl bg-[var(--primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--primaryHover)] disabled:opacity-60"
+          >
+            {saving ? "Adicionando..." : "Adicionar peça"}
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {partsLoading ? (
+            <div className="text-sm text-[var(--muted)]">Carregando peças...</div>
+          ) : parts.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-6">
+              <div className="text-sm font-semibold text-[var(--title)]">
+                Nenhuma peça encontrada
+              </div>
+              <div className="mt-2 text-sm text-[var(--muted)]">
+                Cadastre peças primeiro no módulo Peças.
+              </div>
+            </div>
+          ) : (
+            parts.map((part) => {
+              const active = selectedPartId === part.id;
+
+              return (
+                <button
+                  key={part.id}
+                  type="button"
+                  onClick={() => setSelectedPartId(part.id)}
+                  className={`w-full rounded-2xl border p-4 text-left transition ${
+                    active
+                      ? "border-[color:rgba(47,107,255,0.65)] bg-[color:rgba(47,107,255,0.10)]"
+                      : "border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] hover:bg-[color:rgba(255,255,255,0.04)]"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-semibold text-[var(--title)]">
+                          {part.name}
+                        </div>
+
+                        {part.sku ? (
+                          <Badge tone="neutral">{part.sku}</Badge>
+                        ) : null}
+                      </div>
+
+                      <div className="mt-1 text-xs text-[var(--muted)]">
+                        Estoque: {part.stock_qty}
+                      </div>
+                    </div>
+
+                    <div className="text-sm font-semibold text-[var(--title)]">
+                      {money(Number(part.price || 0))}
+                    </div>
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        {selectedPart ? (
+          <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] px-4 py-3 text-sm text-[var(--muted)]">
+            Selecionada:{" "}
+            <span className="font-semibold text-[var(--title)]">
+              {selectedPart.name}
+            </span>{" "}
+            • {money(Number(selectedPart.price || 0))}
+          </div>
+        ) : null}
+      </Card>
+
+      <Card
+        title="Adicionar serviço manual"
+        subtitle="Para mão de obra específica ou serviço sem peça."
       >
         <div className="grid gap-3 sm:grid-cols-4">
           <Input
-            placeholder="Descrição (ex: Pastilha de freio)"
+            placeholder="Descrição (ex: Alinhamento)"
             value={desc}
             onChange={setDesc}
           />
           <Input placeholder="Qtd" value={qty} onChange={setQty} />
           <Input placeholder="Valor unit." value={unit} onChange={setUnit} />
           <button
-            onClick={addItem}
+            onClick={addManualItem}
             disabled={!canEdit || saving}
-            className="h-12 rounded-2xl bg-[var(--primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--primaryHover)] disabled:opacity-60"
+            className="h-12 rounded-2xl bg-[color:rgba(255,255,255,0.06)] px-4 text-sm font-semibold text-[var(--title)] hover:bg-[color:rgba(255,255,255,0.10)] disabled:opacity-60"
           >
-            {saving ? "Salvando..." : "Adicionar"}
+            {saving ? "Salvando..." : "Adicionar serviço"}
           </button>
         </div>
+      </Card>
 
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <Link
-            to="/app/marketplace"
-            className="inline-flex h-12 items-center justify-center rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] px-4 text-sm font-semibold text-[var(--title)] hover:bg-[color:rgba(255,255,255,0.05)]"
-          >
-            Adicionar do Marketplace
-          </Link>
-
-          <div className="rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] px-4 py-3 text-xs text-[var(--muted)]">
-            Fluxo: OS → Marketplace → Selecionar → Adicionar
-          </div>
-        </div>
-
-        <div className="mt-5 space-y-3">
+      <Card
+        title="Itens da OS"
+        subtitle="Peças e serviços lançados na ordem"
+      >
+        <div className="space-y-3">
           {(service.items || []).length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-6">
               <div className="text-sm font-semibold text-[var(--title)]">
                 Nenhum item ainda
               </div>
               <div className="mt-2 text-sm text-[var(--muted)]">
-                Adicione a primeira peça/serviço e o total fica automático.
+                Adicione peças do catálogo ou serviços manuais.
               </div>
             </div>
           ) : (
@@ -274,9 +434,13 @@ export default function ServiceDetail() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-[var(--title)]">
-                      {it.description}
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-semibold text-[var(--title)]">
+                        {it.description}
+                      </div>
+                      {it.part_id ? <Badge tone="primary">Peça</Badge> : <Badge tone="neutral">Serviço</Badge>}
                     </div>
+
                     <div className="mt-1 text-xs text-[var(--muted)]">
                       {it.qty} × {money(Number(it.unit_price || 0))}
                     </div>
@@ -295,7 +459,7 @@ export default function ServiceDetail() {
       </Card>
 
       <Card
-        title="Mão de obra e descrição do serviço"
+        title="Mão de obra e descrição geral"
         subtitle="Poucos campos. Direto ao ponto."
       >
         <div className="grid gap-3 sm:grid-cols-3">
@@ -310,7 +474,7 @@ export default function ServiceDetail() {
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Descrição / observações (ex: Troca de óleo, troca de pastilha, alinhamento)"
+                placeholder="Descrição / observações gerais da OS"
                 className="min-h-[48px] w-full rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.03)] px-4 py-3 text-sm text-[var(--title)] placeholder:text-[var(--muted)] outline-none focus:border-[color:rgba(47,107,255,0.55)] focus:ring-2 focus:ring-[color:rgba(47,107,255,0.18)]"
               />
             </div>
