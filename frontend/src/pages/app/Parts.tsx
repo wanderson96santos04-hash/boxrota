@@ -9,7 +9,8 @@ type Part = {
   id: string;
   name: string;
   sku?: string | null;
-  price?: number | null;
+  price?: number | string | null;
+  suggested_price?: number | string | null;
   stock_qty?: number | null;
   created_at?: string;
 };
@@ -23,6 +24,31 @@ function money(v: number) {
   } catch {
     return `R$ ${v}`;
   }
+}
+
+function extractErrorMessage(err: any): string {
+  const data = err?.response?.data;
+
+  if (!data) {
+    return err?.message || "Erro ao salvar peça.";
+  }
+
+  if (typeof data.message === "string" && data.message.trim()) {
+    return data.message;
+  }
+
+  if (typeof data.detail === "string" && data.detail.trim()) {
+    return data.detail;
+  }
+
+  if (Array.isArray(data.detail) && data.detail.length > 0) {
+    const first = data.detail[0];
+    if (typeof first?.msg === "string") {
+      return first.msg;
+    }
+  }
+
+  return "Erro ao salvar peça.";
 }
 
 export default function Parts() {
@@ -39,6 +65,9 @@ export default function Parts() {
   const [sku, setSku] = useState("");
   const [price, setPrice] = useState("");
   const [stockQty, setStockQty] = useState("");
+
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   async function load(term?: string) {
     setLoading(true);
@@ -74,12 +103,15 @@ export default function Parts() {
     const parsedPrice = Number(String(price || "0").replace(",", ".")) || 0;
     const parsedStockQty = parseInt(String(stockQty || "0"), 10) || 0;
 
+    setError(null);
+    setSuccess(null);
     setSaving(true);
+
     try {
       await api.post("/parts", {
         name: cleanName,
         sku: sku.trim() || null,
-        price: parsedPrice,
+        suggested_price: parsedPrice,
         stock_qty: parsedStockQty,
       });
 
@@ -88,10 +120,12 @@ export default function Parts() {
       setPrice("");
       setStockQty("");
       setShowManualForm(false);
+      setSuccess("Peça salva com sucesso.");
 
       await load(q);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setError(extractErrorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -111,7 +145,11 @@ export default function Parts() {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <button
-              onClick={() => setShowManualForm((v) => !v)}
+              onClick={() => {
+                setError(null);
+                setSuccess(null);
+                setShowManualForm((v) => !v);
+              }}
               className="h-12 rounded-2xl bg-[color:rgba(255,255,255,0.06)] px-4 text-sm font-semibold text-[var(--title)] hover:bg-[color:rgba(255,255,255,0.10)]"
             >
               {showManualForm ? "Fechar cadastro manual" : "Adicionar peça manual"}
@@ -124,6 +162,18 @@ export default function Parts() {
               Buscar no Marketplace
             </button>
           </div>
+
+          {error ? (
+            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+              {error}
+            </div>
+          ) : null}
+
+          {success ? (
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+              {success}
+            </div>
+          ) : null}
 
           {showManualForm && (
             <div className="rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4">
@@ -187,36 +237,44 @@ export default function Parts() {
                 </div>
               </div>
             ) : (
-              list.map((part) => (
-                <div
-                  key={part.id}
-                  className="rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <div className="text-base font-semibold text-[var(--title)]">
-                          {part.name}
+              list.map((part) => {
+                const rawPrice = part.suggested_price ?? part.price ?? 0;
+                const numericPrice =
+                  typeof rawPrice === "string"
+                    ? Number(rawPrice.replace(",", "."))
+                    : Number(rawPrice || 0);
+
+                return (
+                  <div
+                    key={part.id}
+                    className="rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className="text-base font-semibold text-[var(--title)]">
+                            {part.name}
+                          </div>
+
+                          {part.sku ? (
+                            <Badge tone="neutral">{part.sku}</Badge>
+                          ) : null}
                         </div>
 
-                        {part.sku ? (
-                          <Badge tone="neutral">{part.sku}</Badge>
-                        ) : null}
+                        <div className="mt-1 text-xs text-[var(--muted)]">
+                          Estoque: {Number(part.stock_qty || 0)}
+                        </div>
                       </div>
 
-                      <div className="mt-1 text-xs text-[var(--muted)]">
-                        Estoque: {Number(part.stock_qty || 0)}
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <div className="text-base font-semibold text-[var(--title)]">
-                        {money(Number(part.price || 0))}
+                      <div className="text-right">
+                        <div className="text-base font-semibold text-[var(--title)]">
+                          {money(numericPrice)}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
