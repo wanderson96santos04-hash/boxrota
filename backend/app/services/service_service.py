@@ -1,6 +1,5 @@
 import re
 import uuid
-from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy import func
@@ -39,11 +38,16 @@ def _norm_phone(p: str) -> str:
 def _recalc_service_totals(db: Session, service: Service) -> None:
     subtotal = (
         db.query(func.coalesce(func.sum(ServiceItem.total_price), 0))
-        .filter(ServiceItem.service_id == service.id, ServiceItem.workshop_id == service.workshop_id)
+        .filter(
+            ServiceItem.service_id == service.id,
+            ServiceItem.workshop_id == service.workshop_id,
+        )
         .scalar()
     )
     service.subtotal_amount = _q2(Decimal(subtotal or 0))
-    service.total_amount = _q2(Decimal(service.subtotal_amount or 0) + Decimal(service.labor_amount or 0))
+    service.total_amount = _q2(
+        Decimal(service.subtotal_amount or 0) + Decimal(service.labor_amount or 0)
+    )
 
 
 def _get_or_create_customer(
@@ -60,7 +64,10 @@ def _get_or_create_customer(
         phone = _norm_phone(customer_phone)
         existing = (
             db.query(Customer)
-            .filter(Customer.workshop_id == workshop_id, Customer.phone == phone)
+            .filter(
+                Customer.workshop_id == workshop_id,
+                Customer.phone == phone,
+            )
             .one_or_none()
         )
         if existing:
@@ -72,10 +79,15 @@ def _get_or_create_customer(
 
         if not customer_name:
             raise AppException(400, "missing_customer_name", "Informe o nome do cliente.")
-        c = Customer(workshop_id=workshop_id, name=customer_name.strip(), phone=phone)
-        db.add(c)
+
+        customer = Customer(
+            workshop_id=workshop_id,
+            name=customer_name.strip(),
+            phone=phone,
+        )
+        db.add(customer)
         db.flush()
-        return c
+        return customer
 
     raise AppException(400, "missing_customer_phone", "Informe o telefone do cliente.")
 
@@ -88,22 +100,31 @@ def _get_or_create_vehicle(
     customer_id: uuid.UUID | None,
 ) -> Vehicle:
     plate_n = _norm_plate(plate)
-    v = (
+
+    vehicle = (
         db.query(Vehicle)
-        .filter(Vehicle.workshop_id == workshop_id, Vehicle.plate == plate_n)
+        .filter(
+            Vehicle.workshop_id == workshop_id,
+            Vehicle.plate == plate_n,
+        )
         .one_or_none()
     )
-    if v:
-        if customer_id and v.customer_id != customer_id:
-            v.customer_id = customer_id
-            db.add(v)
-            db.flush()
-        return v
 
-    v = Vehicle(workshop_id=workshop_id, plate=plate_n, customer_id=customer_id)
-    db.add(v)
+    if vehicle:
+        if customer_id and vehicle.customer_id != customer_id:
+            vehicle.customer_id = customer_id
+            db.add(vehicle)
+            db.flush()
+        return vehicle
+
+    vehicle = Vehicle(
+        workshop_id=workshop_id,
+        plate=plate_n,
+        customer_id=customer_id,
+    )
+    db.add(vehicle)
     db.flush()
-    return v
+    return vehicle
 
 
 def list_services(
@@ -123,7 +144,14 @@ def list_services(
 
     if status:
         s = str(status).strip().lower()
-        allowed = {ServiceStatus.in_progress.value, ServiceStatus.finalized.value}
+        allowed = {
+            ServiceStatus.open.value,
+            ServiceStatus.in_progress.value,
+            ServiceStatus.waiting_parts.value,
+            ServiceStatus.completed.value,
+            ServiceStatus.delivered.value,
+            ServiceStatus.canceled.value,
+        }
         if s not in allowed:
             raise AppException(400, "invalid_status", "Status inválido.")
         q = q.filter(Service.status == s)
@@ -134,7 +162,10 @@ def list_services(
             plate_like = f"%{re.sub(r'[^A-Za-z0-9]', '', term).upper()}%"
             name_like = f"%{term.lower()}%"
             phone_like = f"%{re.sub(r'\\D', '', term)}%"
-            q = q.join(Vehicle, Vehicle.id == Service.vehicle_id).outerjoin(Customer, Customer.id == Service.customer_id)
+
+            q = q.join(Vehicle, Vehicle.id == Service.vehicle_id).outerjoin(
+                Customer, Customer.id == Service.customer_id
+            )
             q = q.filter(
                 func.upper(Vehicle.plate).like(plate_like)
                 | func.lower(func.coalesce(Customer.name, "")).like(name_like)
@@ -145,15 +176,22 @@ def list_services(
 
 
 def get_service(db: Session, *, user: User, service_id: uuid.UUID) -> Service:
-    s = (
+    service = (
         db.query(Service)
-        .options(joinedload(Service.vehicle), joinedload(Service.customer), joinedload(Service.items))
-        .filter(Service.workshop_id == user.workshop_id, Service.id == service_id)
+        .options(
+            joinedload(Service.vehicle),
+            joinedload(Service.customer),
+            joinedload(Service.items),
+        )
+        .filter(
+            Service.workshop_id == user.workshop_id,
+            Service.id == service_id,
+        )
         .one_or_none()
     )
-    if not s:
+    if not service:
         raise AppException(404, "not_found", "Serviço não encontrado.")
-    return s
+    return service
 
 
 def create_service(
@@ -167,21 +205,51 @@ def create_service(
     labor_amount: Decimal,
 ) -> Service:
     workshop_id = user.workshop_id
+    normalized_plate = _norm_plate(plate)
 
-    customer = _get_or_create_customer(
-        db,
-        workshop_id=workshop_id,
-        customer_name=customer_name,
-        customer_phone=customer_phone,
+    existing_vehicle = (
+        db.query(Vehicle)
+        .options(joinedload(Vehicle.customer))
+        .filter(
+            Vehicle.workshop_id == workshop_id,
+            Vehicle.plate == normalized_plate,
+        )
+        .one_or_none()
     )
+
+    customer = None
+
+    # 1) Se usuário informou cliente/telefone, usa ou cria esse cliente
+    if customer_name or customer_phone:
+        customer = _get_or_create_customer(
+            db,
+            workshop_id=workshop_id,
+            customer_name=customer_name,
+            customer_phone=customer_phone,
+        )
+    # 2) Se não informou, mas a placa já existe e já tem cliente, puxa automático
+    elif existing_vehicle and existing_vehicle.customer:
+        customer = existing_vehicle.customer
+
     vehicle = _get_or_create_vehicle(
         db,
         workshop_id=workshop_id,
-        plate=plate,
+        plate=normalized_plate,
         customer_id=customer.id if customer else None,
     )
 
-    s = Service(
+    # Se o veículo já existia e tem cliente, mas a OS ainda ficou sem customer, reaproveita
+    if customer is None and vehicle.customer_id:
+        customer = (
+            db.query(Customer)
+            .filter(
+                Customer.workshop_id == workshop_id,
+                Customer.id == vehicle.customer_id,
+            )
+            .one_or_none()
+        )
+
+    service = Service(
         workshop_id=workshop_id,
         vehicle_id=vehicle.id,
         customer_id=customer.id if customer else None,
@@ -192,14 +260,14 @@ def create_service(
         total_amount=Decimal("0"),
         created_by_user_id=user.id,
     )
-    db.add(s)
+    db.add(service)
     db.flush()
 
-    _recalc_service_totals(db, s)
-    db.add(s)
+    _recalc_service_totals(db, service)
+    db.add(service)
     db.flush()
-    db.refresh(s)
-    return s
+    db.refresh(service)
+    return service
 
 
 def update_service(
@@ -211,33 +279,40 @@ def update_service(
     notes: str | None,
     labor_amount: Decimal | None,
 ) -> Service:
-    s = get_service(db, user=user, service_id=service_id)
-    prev_status = s.status
+    service = get_service(db, user=user, service_id=service_id)
+    prev_status = service.status
 
     if status is not None:
         st = str(status).strip().lower()
-        allowed = {ServiceStatus.in_progress.value, ServiceStatus.finalized.value}
+        allowed = {
+            ServiceStatus.open.value,
+            ServiceStatus.in_progress.value,
+            ServiceStatus.waiting_parts.value,
+            ServiceStatus.completed.value,
+            ServiceStatus.delivered.value,
+            ServiceStatus.canceled.value,
+        }
         if st not in allowed:
             raise AppException(400, "invalid_status", "Status inválido.")
-        s.status = st
+        service.status = st
 
     if notes is not None:
-        s.notes = notes.strip() or None
+        service.notes = notes.strip() or None
 
     if labor_amount is not None:
-        s.labor_amount = _q2(Decimal(labor_amount or 0))
+        service.labor_amount = _q2(Decimal(labor_amount or 0))
 
-    _recalc_service_totals(db, s)
-    db.add(s)
+    _recalc_service_totals(db, service)
+    db.add(service)
     db.flush()
 
-    if prev_status != "finalized" and s.status == "finalized":
-        ensure_return_for_finalized_service(db, user=user, service=s)
+    if prev_status != ServiceStatus.completed.value and service.status == ServiceStatus.completed.value:
+        ensure_return_for_finalized_service(db, user=user, service=service)
 
-    db.add(s)
+    db.add(service)
     db.flush()
-    db.refresh(s)
-    return s
+    db.refresh(service)
+    return service
 
 
 def add_service_item(
@@ -250,7 +325,7 @@ def add_service_item(
     unit_price: Decimal,
     part_id: uuid.UUID | None = None,
 ) -> Service:
-    s = get_service(db, user=user, service_id=service_id)
+    service = get_service(db, user=user, service_id=service_id)
 
     q = int(qty or 1)
     if q < 1:
@@ -259,20 +334,20 @@ def add_service_item(
     unit = _q2(Decimal(unit_price or 0))
     total = _q2(unit * Decimal(q))
 
-    it = ServiceItem(
+    item = ServiceItem(
         workshop_id=user.workshop_id,
-        service_id=s.id,
+        service_id=service.id,
         part_id=part_id,
         description=description.strip()[:160],
         qty=q,
         unit_price=unit,
         total_price=total,
     )
-    db.add(it)
+    db.add(item)
     db.flush()
 
-    _recalc_service_totals(db, s)
-    db.add(s)
+    _recalc_service_totals(db, service)
+    db.add(service)
     db.flush()
-    db.refresh(s)
-    return s
+    db.refresh(service)
+    return service
