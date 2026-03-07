@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
 from app.db.deps import get_db
+from app.models.enums import ServiceStatus
 from app.models.user import User
 from app.schemas.service import ServiceCreate, ServiceItemCreate, ServiceListOut, ServiceOut, ServiceUpdate
 from app.services.service_service import add_service_item, create_service, get_service, list_services, update_service
@@ -119,6 +120,26 @@ def patch_endpoint(
         status=body.status,
         notes=body.notes,
         labor_amount=body.labor_amount,
+    )
+    db.commit()
+    s = get_service(db, user=user, service_id=sid)
+    return _to_out(s)
+
+
+@router.post("/{service_id}/complete", response_model=ServiceOut)
+def complete_endpoint(
+    service_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    sid = uuid.UUID(service_id)
+    s = update_service(
+        db,
+        user=user,
+        service_id=sid,
+        status=ServiceStatus.completed.value,
+        notes=None,
+        labor_amount=None,
     )
     db.commit()
     s = get_service(db, user=user, service_id=sid)
