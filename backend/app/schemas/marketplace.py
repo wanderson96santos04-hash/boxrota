@@ -14,6 +14,7 @@ class PartOut(BaseModel):
     vehicle_compat: str
     active: bool
     suggested_price: Optional[str] = None
+    stock_qty: int
 
 
 class PartOfferOut(BaseModel):
