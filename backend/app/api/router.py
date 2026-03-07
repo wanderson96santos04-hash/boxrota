@@ -10,6 +10,7 @@ from app.api.routes.returns import router as returns_router
 from app.api.routes.marketplace import router as marketplace_router
 from app.api.routes.kiwify import router as kiwify_router
 from app.api.routes.service_marketplace import router as service_marketplace_router
+from app.api.routes.parts import router as parts_router
 
 
 api_router = APIRouter(prefix="/api")
@@ -24,3 +25,4 @@ api_router.include_router(returns_router)
 api_router.include_router(marketplace_router)
 api_router.include_router(kiwify_router)
 api_router.include_router(service_marketplace_router)
+api_router.include_router(parts_router)
