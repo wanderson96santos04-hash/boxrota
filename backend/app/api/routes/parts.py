@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
 from app.db.deps import get_db
-from app.models.part import Part as PartModel
+from app.models.marketplace import Part
 from app.models.user import User
 
 router = APIRouter(prefix="/parts", tags=["parts"])
@@ -29,7 +29,7 @@ class PartOut(BaseModel):
     stock_qty: int
 
     @classmethod
-    def from_model(cls, part: PartModel) -> "PartOut":
+    def from_model(cls, part: Part) -> "PartOut":
         return cls(
             id=str(part.id),
             name=part.name,
@@ -46,14 +46,18 @@ def list_parts(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    query = db.query(PartModel).order_by(PartModel.name.asc())
+    query = (
+        db.query(Part)
+        .filter(Part.workshop_id == user.workshop_id)
+        .order_by(Part.name.asc())
+    )
 
     if q and q.strip():
         term = f"%{q.strip().lower()}%"
         query = query.filter(
             or_(
-                func.lower(PartModel.name).like(term),
-                func.lower(func.coalesce(PartModel.sku, "")).like(term),
+                func.lower(Part.name).like(term),
+                func.lower(func.coalesce(Part.sku, "")).like(term),
             )
         )
 
@@ -67,7 +71,8 @@ def create_part(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    part = PartModel(
+    part = Part(
+        workshop_id=user.workshop_id,
         name=data.name.strip(),
         sku=(data.sku.strip().upper() if data.sku and data.sku.strip() else None),
         price=Decimal(data.price or 0),
