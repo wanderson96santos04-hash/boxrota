@@ -95,9 +95,13 @@ api.interceptors.response.use(
       return new Promise((resolve, reject) => {
         queueRequest((newToken) => {
           if (!newToken) return reject(error);
-          originalRequest.headers = originalRequest.headers ?? {};
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          resolve(api(originalRequest));
+
+          originalRequest.headers = {
+            ...(originalRequest.headers || {}),
+            Authorization: `Bearer ${newToken}`,
+          };
+
+          resolve(axios(originalRequest));
         });
       });
     }
@@ -122,9 +126,12 @@ api.interceptors.response.use(
 
       flushQueue(newAccess);
 
-      originalRequest.headers = originalRequest.headers ?? {};
-      originalRequest.headers.Authorization = `Bearer ${newAccess}`;
-      return api(originalRequest);
+      originalRequest.headers = {
+        ...(originalRequest.headers || {}),
+        Authorization: `Bearer ${newAccess}`,
+      };
+
+      return axios(originalRequest);
     } catch (e) {
       flushQueue(null);
       clearSession();
