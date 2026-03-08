@@ -149,6 +149,7 @@ export default function Parts() {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <button
+              type="button"
               onClick={() => {
                 setError(null);
                 setSuccess(null);
@@ -160,6 +161,7 @@ export default function Parts() {
             </button>
 
             <button
+              type="button"
               onClick={() => navigate("/app/marketplace")}
               className="h-12 rounded-2xl bg-[var(--primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--primaryHover)]"
             >
@@ -213,6 +215,7 @@ export default function Parts() {
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <button
+                  type="button"
                   onClick={createManualPart}
                   disabled={saving}
                   className="h-12 rounded-2xl bg-[var(--success)] px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
@@ -251,8 +254,16 @@ export default function Parts() {
                 return (
                   <div
                     key={part.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={handleOpenServices}
-                    className="cursor-pointer rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4 text-left transition hover:border-[var(--primary)] hover:bg-[color:rgba(255,255,255,0.04)]"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleOpenServices();
+                      }
+                    }}
+                    className="cursor-pointer rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4 transition hover:border-[var(--primary)] hover:bg-[color:rgba(255,255,255,0.04)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -276,16 +287,9 @@ export default function Parts() {
                           {money(numericPrice)}
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenServices();
-                          }}
-                          className="mt-2 text-xs font-medium text-[var(--primary)] hover:underline"
-                        >
+                        <div className="mt-2 text-xs font-medium text-[var(--primary)]">
                           Abrir OS →
-                        </button>
+                        </div>
                       </div>
                     </div>
                   </div>
