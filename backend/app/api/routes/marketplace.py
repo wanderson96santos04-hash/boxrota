@@ -9,11 +9,11 @@ from app.models.user import User
 from app.schemas.marketplace import (
     AddCartItemIn,
     CartOut,
+    CheckoutFromCartIn,
     PartOfferOut,
     PartOut,
     PurchaseOrderOut,
     PurchaseOrderStatusUpdate,
-    CheckoutFromCartIn,
 )
 from app.services.marketplace_service import (
     add_cart_item,
@@ -41,7 +41,15 @@ def parts(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    rows = search_parts(db, user=user, query=query, category=category, brand=brand, limit=limit)
+    rows = search_parts(
+        db,
+        user=user,
+        query=query,
+        category=category,
+        brand=brand,
+        limit=limit,
+    )
+
     out = []
     for p in rows:
         out.append(
@@ -53,7 +61,12 @@ def parts(
                 category=p.category,
                 vehicle_compat=p.vehicle_compat,
                 active=p.active,
-                suggested_price=(f"{p.suggested_price:.2f}" if p.suggested_price is not None else None),
+                suggested_price=(
+                    f"{p.suggested_price:.2f}"
+                    if p.suggested_price is not None
+                    else None
+                ),
+                stock_qty=int(p.stock_qty or 0),
             )
         )
     return out
@@ -67,6 +80,7 @@ def part_detail(
 ):
     pid = uuid.UUID(part_id)
     p = get_part(db, part_id=pid)
+
     return PartOut(
         id=p.id,
         sku=p.sku,
@@ -75,7 +89,12 @@ def part_detail(
         category=p.category,
         vehicle_compat=p.vehicle_compat,
         active=p.active,
-        suggested_price=(f"{p.suggested_price:.2f}" if p.suggested_price is not None else None),
+        suggested_price=(
+            f"{p.suggested_price:.2f}"
+            if p.suggested_price is not None
+            else None
+        ),
+        stock_qty=int(p.stock_qty or 0),
     )
 
 
@@ -183,6 +202,11 @@ def add_delivered_items_to_service(
 ):
     oid = uuid.UUID(order_id)
     sid = uuid.UUID(service_id)
-    s = add_order_items_to_service(db, user=user, service_id=sid, order_id=oid)
+    s = add_order_items_to_service(
+        db,
+        user=user,
+        service_id=sid,
+        order_id=oid,
+    )
     db.commit()
     return {"ok": True, "service_id": str(s.id)}
