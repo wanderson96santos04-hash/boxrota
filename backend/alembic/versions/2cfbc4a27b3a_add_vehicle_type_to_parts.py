@@ -1,7 +1,7 @@
 """add vehicle type to parts
 
 Revision ID: 2cfbc4a27b3a
-Revises: 
+Revises: e97ae8d56054
 Create Date: 2026-03-08
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "2cfbc4a27b3a"
-down_revision = None
+down_revision = "e97ae8d56054"
 branch_labels = None
 depends_on = None
 
