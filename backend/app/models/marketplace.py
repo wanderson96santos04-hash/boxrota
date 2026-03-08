@@ -1,110 +1,291 @@
-# Estrutura correta para seu marketplace
-#
-# Seu catálogo precisa ter tipos de veículos.
-#
-# Tabela parts deveria ter algo assim:
-#
-# id | name | sku | vehicle_type
-# 1  | Filtro de óleo | FILTRO-OLEO | car
-# 2  | Filtro de óleo moto | FILTRO-OLEO-MOTO | moto
-# 3  | Pastilha freio | PASTILHA-FREIO | car
-# 4  | Pastilha freio moto | PASTILHA-MOTO | moto
-#
-# Assim o sistema separa.
+import uuid
+from decimal import Decimal
 
-# Peças comuns de CARRO
-#
-# Categorias principais:
-# - Filtro de óleo
-# - Filtro de ar
-# - Filtro cabine
-# - Velas
-# - Pastilha de freio
-# - Disco de freio
-# - Amortecedor
-# - Correia dentada
-# - Correia alternador
-# - Bomba combustível
-# - Radiador
-# - Sensor oxigênio
-# - Bateria
-# - Rolamento
-# - Embreagem
+from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-# Peças comuns de MOTO
-#
-# Agora as peças de moto que você precisa no catálogo:
-# - Kit relação (corrente + coroa + pinhão)
-# - Pastilha freio moto
-# - Disco freio moto
-# - Filtro de ar moto
-# - Filtro óleo moto
-# - Velas moto
-# - Bateria moto
-# - Cabo acelerador
-# - Cabo embreagem
-# - Coroa
-# - Pinhão
-# - Corrente transmissão
-# - Amortecedor moto
-# - Retentor bengala
-# - Kit embreagem moto
+from app.models.base import Base, TenantMixin, TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.enums import (
+    AvailabilityStatus,
+    CartStatus,
+    CommissionAppliesTo,
+    CommissionMode,
+    DeliveryMode,
+    PricingMode,
+    PurchaseOrderStatus,
+)
 
-# Essas são as mais vendidas em oficinas de moto.
 
-# Exemplo real no marketplace
-#
-# Oficina digita:
-# CG 160
-#
-# Sistema sugere:
-# - Velas NGK
-# - Kit relação
-# - Pastilha freio dianteira
-# - Filtro ar moto
-# - Bateria
-#
-# Clica em kit relação:
-#
-# Auto Peças Centro
-# Marca: DID
-# R$ 129,90
-# Em estoque
+class Part(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "parts"
+    __table_args__ = (
+        UniqueConstraint("sku", name="uq_parts_sku"),
+    )
 
-# Como gerar 3000 peças incluindo moto
-#
-# Divisão simples:
-# - 2000 peças carro
-# - 1000 peças moto
+    sku: Mapped[str] = mapped_column(String(60), nullable=False)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    brand: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    category: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    vehicle_compat: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
-# Categorias carro
-# 15 categorias * 130 variações = 1950 peças
+    # novo campo para separar carro / moto
+    vehicle_type: Mapped[str] = mapped_column(String(20), nullable=False, default="both")
 
-# Categorias moto
-# 10 categorias * 100 variações = 1000 peças
+    cost_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    suggested_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
 
-# Total aproximado: 2950 peças
+    stock_qty: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
-# Exemplo de peças de moto geradas:
-# - Kit relação CG 160
-# - Kit relação YBR 125
-# - Kit relação Fazer 250
-# - Kit relação Titan 150
-# - Kit relação Bros 160
-# - Pastilha freio CG 160
-# - Pastilha freio XRE 300
-# - Pastilha freio Fazer 250
-# - Filtro ar CG 160
-# - Filtro ar Titan 150
-# - Filtro ar Biz 125
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-# Só CG + Titan + Biz + Fazer já geram centenas.
+    offers = relationship("SupplierPart", back_populates="part")
 
-# Isso deixa seu SaaS muito mais forte
-#
-# Porque você atende:
-# - Oficina carro
-# - Oficina moto
-# - Oficina mista
-#
-# No Brasil isso é muito comum.
+
+class Supplier(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "suppliers"
+    __table_args__ = (
+        UniqueConstraint("name", name="uq_suppliers_name"),
+    )
+
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    whatsapp: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    cnpj: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(80), nullable=True)
+
+    offers = relationship("SupplierPart", back_populates="supplier")
+
+
+class WorkshopSupplier(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
+    __tablename__ = "workshop_suppliers"
+    __table_args__ = (
+        UniqueConstraint("workshop_id", "supplier_id", name="uq_workshop_suppliers_workshop_supplier"),
+    )
+
+    supplier_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("suppliers.id"),
+        nullable=False,
+        index=True,
+    )
+
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
+class SupplierPart(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "supplier_parts"
+    __table_args__ = (
+        UniqueConstraint("supplier_id", "part_id", name="uq_supplier_parts_supplier_part"),
+    )
+
+    supplier_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("suppliers.id"),
+        nullable=False,
+        index=True,
+    )
+
+    part_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("parts.id"),
+        nullable=False,
+        index=True,
+    )
+
+    supplier_sku: Mapped[str | None] = mapped_column(String(80), nullable=True)
+
+    price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+
+    availability_status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=AvailabilityStatus.unknown.value,
+    )
+
+    lead_time_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    supplier = relationship("Supplier", back_populates="offers")
+    part = relationship("Part", back_populates="offers")
+
+
+class WorkshopFavoritePart(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
+    __tablename__ = "workshop_favorite_parts"
+    __table_args__ = (
+        UniqueConstraint("workshop_id", "part_id", name="uq_workshop_favorite_parts_workshop_part"),
+    )
+
+    part_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("parts.id"),
+        nullable=False,
+        index=True,
+    )
+
+
+class Cart(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
+    __tablename__ = "carts"
+
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default=CartStatus.open.value)
+
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+    )
+
+    items = relationship("CartItem", back_populates="cart", cascade="all, delete-orphan")
+
+
+class CartItem(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "cart_items"
+    __table_args__ = (
+        UniqueConstraint("cart_id", "part_id", name="uq_cart_items_cart_part"),
+    )
+
+    cart_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("carts.id"),
+        nullable=False,
+        index=True,
+    )
+
+    part_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("parts.id"),
+        nullable=False,
+        index=True,
+    )
+
+    qty: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    chosen_supplier_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("suppliers.id"),
+        nullable=True,
+        index=True,
+    )
+
+    unit_price_snapshot: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+
+    cart = relationship("Cart", back_populates="items")
+
+
+class PurchaseOrder(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
+    __tablename__ = "purchase_orders"
+    __table_args__ = (
+        UniqueConstraint("workshop_id", "order_number", name="uq_purchase_orders_workshop_order_number"),
+    )
+
+    order_number: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=PurchaseOrderStatus.draft.value,
+    )
+
+    supplier_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("suppliers.id"),
+        nullable=False,
+        index=True,
+    )
+
+    subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    shipping: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    discount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+
+    delivery_mode: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=DeliveryMode.delivery.value,
+    )
+
+    delivery_address: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+    )
+
+    items = relationship("PurchaseOrderItem", back_populates="purchase_order", cascade="all, delete-orphan")
+
+
+class PurchaseOrderItem(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "purchase_order_items"
+    __table_args__ = (
+        UniqueConstraint("purchase_order_id", "part_id", name="uq_purchase_order_items_po_part"),
+    )
+
+    purchase_order_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("purchase_orders.id"),
+        nullable=False,
+        index=True,
+    )
+
+    part_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("parts.id"),
+        nullable=False,
+        index=True,
+    )
+
+    qty: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    total_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+
+    purchase_order = relationship("PurchaseOrder", back_populates="items")
+
+
+class MarketplaceSettings(Base, TenantMixin, TimestampMixin):
+    __tablename__ = "marketplace_settings"
+
+    workshop_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("workshops.id"),
+        primary_key=True,
+    )
+
+    allow_attendant_purchase: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    default_markup_percent: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
+
+    pricing_mode: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=PricingMode.markup.value,
+    )
+
+    pro_feature_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class CommissionRule(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
+    __tablename__ = "commission_rules"
+
+    mode: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=CommissionMode.percent.value,
+    )
+
+    value: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+
+    applies_to: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=CommissionAppliesTo.all.value,
+    )
+
+    category: Mapped[str | None] = mapped_column(String(80), nullable=True)
+
+    supplier_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("suppliers.id"),
+        nullable=True,
+        index=True,
+    )
