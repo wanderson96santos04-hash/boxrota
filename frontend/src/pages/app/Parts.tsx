@@ -111,7 +111,7 @@ export default function Parts() {
       await api.post("/parts", {
         name: cleanName,
         sku: sku.trim() || null,
-        suggested_price: parsedPrice,
+        price: parsedPrice,
         stock_qty: parsedStockQty,
       });
 
