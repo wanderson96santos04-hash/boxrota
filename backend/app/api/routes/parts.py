@@ -24,7 +24,7 @@ class PartCreate(BaseModel):
 class PartOut(BaseModel):
     id: str
     name: str
-    sku: str
+    sku: Optional[str] = None
     price: float
     stock_qty: int
 
@@ -33,7 +33,7 @@ class PartOut(BaseModel):
         return cls(
             id=str(part.id),
             name=part.name,
-            sku=part.sku,
+            sku=part.sku or "",
             price=float(part.suggested_price or part.cost_price or 0),
             stock_qty=int(part.stock_qty or 0),
         )
