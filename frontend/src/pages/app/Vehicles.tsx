@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../lib/api";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
@@ -23,6 +24,8 @@ function normPlatePreview(v: string) {
 }
 
 export default function Vehicles() {
+  const navigate = useNavigate();
+
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,6 +109,10 @@ export default function Vehicles() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleOpenOs() {
+    navigate("/app/services");
   }
 
   const list = useMemo(() => rows || [], [rows]);
@@ -201,9 +208,13 @@ export default function Vehicles() {
                     <div className="text-xs font-medium text-[var(--muted)]">
                       Próximo passo
                     </div>
-                    <div className="mt-1 text-xs text-[var(--muted)]">
+                    <button
+                      type="button"
+                      onClick={handleOpenOs}
+                      className="mt-1 text-xs text-[var(--primary)] hover:underline"
+                    >
                       Abrir OS → por placa
-                    </div>
+                    </button>
                   </div>
                 </div>
               </div>
