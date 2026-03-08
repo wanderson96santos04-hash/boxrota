@@ -249,11 +249,10 @@ export default function Parts() {
                     : Number(rawPrice || 0);
 
                 return (
-                  <button
+                  <div
                     key={part.id}
-                    type="button"
                     onClick={handleOpenServices}
-                    className="w-full rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4 text-left hover:border-[var(--primary)] hover:bg-[color:rgba(255,255,255,0.04)] transition"
+                    className="cursor-pointer rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4 text-left transition hover:border-[var(--primary)] hover:bg-[color:rgba(255,255,255,0.04)]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -276,9 +275,20 @@ export default function Parts() {
                         <div className="text-base font-semibold text-[var(--title)]">
                           {money(numericPrice)}
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenServices();
+                          }}
+                          className="mt-2 text-xs font-medium text-[var(--primary)] hover:underline"
+                        >
+                          Abrir OS →
+                        </button>
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })
             )}
