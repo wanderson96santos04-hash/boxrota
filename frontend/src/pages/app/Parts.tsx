@@ -131,6 +131,10 @@ export default function Parts() {
     }
   }
 
+  function handleOpenServices() {
+    navigate("/app/services");
+  }
+
   const list = useMemo(() => rows || [], [rows]);
 
   return (
@@ -245,9 +249,11 @@ export default function Parts() {
                     : Number(rawPrice || 0);
 
                 return (
-                  <div
+                  <button
                     key={part.id}
-                    className="rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4"
+                    type="button"
+                    onClick={handleOpenServices}
+                    className="w-full rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4 text-left hover:border-[var(--primary)] hover:bg-[color:rgba(255,255,255,0.04)] transition"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -272,7 +278,7 @@ export default function Parts() {
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 );
               })
             )}
