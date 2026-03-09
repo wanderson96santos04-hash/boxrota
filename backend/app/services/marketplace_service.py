@@ -704,3 +704,90 @@ def create_supplier(
         db.flush()
 
     return sup
+
+
+def create_supplier_part(
+    db: Session,
+    *,
+    user: User,
+    supplier_id: uuid.UUID,
+    part_id: uuid.UUID,
+    supplier_sku: str | None,
+    price: str,
+    availability_status: str,
+    lead_time_days: int | None,
+) -> SupplierPart:
+    _ensure_pro(db, user=user)
+
+    supplier_link = (
+        db.query(WorkshopSupplier)
+        .filter(
+            WorkshopSupplier.workshop_id == user.workshop_id,
+            WorkshopSupplier.supplier_id == supplier_id,
+            WorkshopSupplier.active.is_(True),
+        )
+        .one_or_none()
+    )
+    if not supplier_link:
+        raise AppException(400, "invalid_supplier", "Fornecedor inválido para esta oficina.")
+
+    part = (
+        db.query(Part)
+        .filter(Part.id == part_id, Part.active.is_(True))
+        .one_or_none()
+    )
+    if not part:
+        raise AppException(404, "not_found", "Peça não encontrada.")
+
+    clean_supplier_sku = (supplier_sku or "").strip() or None
+    clean_status = (availability_status or "").strip().lower() or AvailabilityStatus.unknown.value
+
+    allowed_status = {
+        AvailabilityStatus.available.value,
+        AvailabilityStatus.limited.value,
+        AvailabilityStatus.unavailable.value,
+        AvailabilityStatus.unknown.value,
+    }
+    if clean_status not in allowed_status:
+        raise AppException(400, "invalid_availability_status", "availability_status inválido.")
+
+    if lead_time_days is not None:
+        lead_time_days = int(lead_time_days)
+        if lead_time_days < 0 or lead_time_days > 365:
+            raise AppException(400, "invalid_lead_time_days", "lead_time_days inválido.")
+
+    price_value = _parse_money(price)
+    if price_value <= Decimal("0.00"):
+        raise AppException(400, "invalid_price", "Preço inválido.")
+
+    row = (
+        db.query(SupplierPart)
+        .filter(
+            SupplierPart.supplier_id == supplier_id,
+            SupplierPart.part_id == part_id,
+        )
+        .one_or_none()
+    )
+
+    if not row:
+        row = SupplierPart(
+            supplier_id=supplier_id,
+            part_id=part_id,
+            supplier_sku=clean_supplier_sku,
+            price=price_value,
+            availability_status=clean_status,
+            lead_time_days=lead_time_days,
+        )
+        db.add(row)
+        db.flush()
+        db.refresh(row)
+        return row
+
+    row.supplier_sku = clean_supplier_sku
+    row.price = price_value
+    row.availability_status = clean_status
+    row.lead_time_days = lead_time_days
+    db.add(row)
+    db.flush()
+    db.refresh(row)
+    return row

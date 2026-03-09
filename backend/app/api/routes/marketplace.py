@@ -16,12 +16,15 @@ from app.schemas.marketplace import (
     PurchaseOrderStatusUpdate,
     SupplierCreateIn,
     SupplierOut,
+    SupplierPartCreateIn,
+    SupplierPartOut,
 )
 from app.services.marketplace_service import (
     add_cart_item,
     add_order_items_to_service,
     create_order_from_cart,
     create_supplier,
+    create_supplier_part,
     get_cart,
     get_offers,
     get_order,
@@ -155,6 +158,34 @@ def create_supplier_endpoint(
         whatsapp=sup.whatsapp,
         cnpj=sup.cnpj,
         city=sup.city,
+    )
+
+
+@router.post("/supplier-parts", response_model=SupplierPartOut)
+def create_supplier_part_endpoint(
+    body: SupplierPartCreateIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    row = create_supplier_part(
+        db,
+        user=user,
+        supplier_id=body.supplier_id,
+        part_id=body.part_id,
+        supplier_sku=body.supplier_sku,
+        price=body.price,
+        availability_status=body.availability_status,
+        lead_time_days=body.lead_time_days,
+    )
+    db.commit()
+
+    return SupplierPartOut(
+        supplier_id=row.supplier_id,
+        part_id=row.part_id,
+        supplier_sku=row.supplier_sku,
+        price=f"{row.price:.2f}",
+        availability_status=row.availability_status,
+        lead_time_days=row.lead_time_days,
     )
 
 
