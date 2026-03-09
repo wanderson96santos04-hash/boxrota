@@ -743,9 +743,9 @@ def create_supplier_part(
     clean_status = (availability_status or "").strip().lower() or AvailabilityStatus.unknown.value
 
     allowed_status = {
-        AvailabilityStatus.available.value,
-        AvailabilityStatus.limited.value,
-        AvailabilityStatus.unavailable.value,
+        AvailabilityStatus.in_stock.value,
+        AvailabilityStatus.low.value,
+        AvailabilityStatus.out.value,
         AvailabilityStatus.unknown.value,
     }
     if clean_status not in allowed_status:
