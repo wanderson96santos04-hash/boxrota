@@ -3,10 +3,11 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import AppException
 from app.models.subscription import Subscription
-from app.models.enums import SubscriptionPlan, SubscriptionStatus
 
 
 def is_pro_active(db: Session, *, workshop_id: uuid.UUID) -> bool:
+    from app.models.enums import SubscriptionPlan, SubscriptionStatus
+
     sub = (
         db.query(Subscription)
         .filter(Subscription.workshop_id == workshop_id)
