@@ -622,3 +622,85 @@ def add_order_items_to_service(
     _recalc_service_totals(db, service=s)
     db.refresh(s)
     return s
+
+
+def list_suppliers(db: Session, *, user: User) -> list[Supplier]:
+    rows = (
+        db.query(Supplier)
+        .join(WorkshopSupplier, WorkshopSupplier.supplier_id == Supplier.id)
+        .filter(
+            WorkshopSupplier.workshop_id == user.workshop_id,
+            WorkshopSupplier.active.is_(True),
+        )
+        .order_by(Supplier.name.asc())
+        .all()
+    )
+    return rows
+
+
+def create_supplier(
+    db: Session,
+    *,
+    user: User,
+    name: str,
+    whatsapp: str | None,
+    city: str | None,
+    cnpj: str | None,
+) -> Supplier:
+    clean_name = (name or "").strip()
+    if len(clean_name) < 2:
+        raise AppException(400, "invalid_name", "Nome do fornecedor inválido.")
+
+    clean_whatsapp = (whatsapp or "").strip() or None
+    clean_city = (city or "").strip() or None
+    clean_cnpj = (cnpj or "").strip() or None
+
+    sup = (
+        db.query(Supplier)
+        .filter(func.lower(Supplier.name) == clean_name.lower())
+        .one_or_none()
+    )
+
+    if not sup:
+        sup = Supplier(
+            name=clean_name,
+            whatsapp=clean_whatsapp,
+            city=clean_city,
+            cnpj=clean_cnpj,
+        )
+        db.add(sup)
+        db.flush()
+        db.refresh(sup)
+    else:
+        if clean_whatsapp and not sup.whatsapp:
+            sup.whatsapp = clean_whatsapp
+        if clean_city and not sup.city:
+            sup.city = clean_city
+        if clean_cnpj and not sup.cnpj:
+            sup.cnpj = clean_cnpj
+        db.add(sup)
+        db.flush()
+
+    link = (
+        db.query(WorkshopSupplier)
+        .filter(
+            WorkshopSupplier.workshop_id == user.workshop_id,
+            WorkshopSupplier.supplier_id == sup.id,
+        )
+        .one_or_none()
+    )
+
+    if not link:
+        link = WorkshopSupplier(
+            workshop_id=user.workshop_id,
+            supplier_id=sup.id,
+            active=True,
+        )
+        db.add(link)
+        db.flush()
+    elif not link.active:
+        link.active = True
+        db.add(link)
+        db.flush()
+
+    return sup

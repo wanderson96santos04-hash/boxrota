@@ -91,3 +91,18 @@ class PurchaseOrderOut(BaseModel):
 
 class PurchaseOrderStatusUpdate(BaseModel):
     status: str = Field(min_length=3, max_length=20)
+
+
+class SupplierCreateIn(BaseModel):
+    name: str = Field(min_length=2, max_length=160)
+    whatsapp: Optional[str] = Field(default=None, max_length=30)
+    cnpj: Optional[str] = Field(default=None, max_length=30)
+    city: Optional[str] = Field(default=None, max_length=80)
+
+
+class SupplierOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    whatsapp: Optional[str] = None
+    cnpj: Optional[str] = None
+    city: Optional[str] = None

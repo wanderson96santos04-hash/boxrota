@@ -14,16 +14,20 @@ from app.schemas.marketplace import (
     PartOut,
     PurchaseOrderOut,
     PurchaseOrderStatusUpdate,
+    SupplierCreateIn,
+    SupplierOut,
 )
 from app.services.marketplace_service import (
     add_cart_item,
     add_order_items_to_service,
     create_order_from_cart,
+    create_supplier,
     get_cart,
     get_offers,
     get_order,
     get_part,
     list_orders,
+    list_suppliers,
     order_to_dict,
     search_parts,
     update_order_status,
@@ -109,6 +113,49 @@ def offers(
     pid = uuid.UUID(part_id)
     rows = get_offers(db, user=user, part_id=pid)
     return [PartOfferOut(**r) for r in rows]
+
+
+@router.get("/suppliers", response_model=list[SupplierOut])
+def suppliers(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    rows = list_suppliers(db, user=user)
+    return [
+        SupplierOut(
+            id=s.id,
+            name=s.name,
+            whatsapp=s.whatsapp,
+            cnpj=s.cnpj,
+            city=s.city,
+        )
+        for s in rows
+    ]
+
+
+@router.post("/suppliers", response_model=SupplierOut)
+def create_supplier_endpoint(
+    body: SupplierCreateIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    sup = create_supplier(
+        db,
+        user=user,
+        name=body.name,
+        whatsapp=body.whatsapp,
+        city=body.city,
+        cnpj=body.cnpj,
+    )
+    db.commit()
+
+    return SupplierOut(
+        id=sup.id,
+        name=sup.name,
+        whatsapp=sup.whatsapp,
+        cnpj=sup.cnpj,
+        city=sup.city,
+    )
 
 
 @router.post("/cart/items", response_model=CartOut)
