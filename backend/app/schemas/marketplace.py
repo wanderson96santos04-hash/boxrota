@@ -106,3 +106,19 @@ class SupplierOut(BaseModel):
     whatsapp: Optional[str] = None
     cnpj: Optional[str] = None
     city: Optional[str] = None
+class SupplierPartCreateIn(BaseModel):
+    supplier_id: uuid.UUID
+    part_id: uuid.UUID
+    supplier_sku: Optional[str] = Field(default=None, max_length=120)
+    price: str = Field(max_length=20)
+    availability_status: str = Field(default="available", max_length=30)
+    lead_time_days: Optional[int] = Field(default=None, ge=0, le=365)
+
+
+class SupplierPartOut(BaseModel):
+    supplier_id: uuid.UUID
+    part_id: uuid.UUID
+    supplier_sku: Optional[str] = None
+    price: str
+    availability_status: str
+    lead_time_days: Optional[int] = None
