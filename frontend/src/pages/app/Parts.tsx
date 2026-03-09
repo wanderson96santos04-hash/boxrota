@@ -5,6 +5,8 @@ import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
 import { Badge } from "../../components/ui/Badge";
 
+type VehicleFilter = "all" | "car" | "moto";
+
 type Part = {
   id: string;
   name: string;
@@ -12,6 +14,7 @@ type Part = {
   price?: number | string | null;
   suggested_price?: number | string | null;
   stock_qty?: number | null;
+  vehicle_type?: string | null;
   created_at?: string;
 };
 
@@ -58,6 +61,8 @@ export default function Parts() {
   const [rows, setRows] = useState<Part[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [vehicleType, setVehicleType] = useState<VehicleFilter>("all");
+
   const [showManualForm, setShowManualForm] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -72,12 +77,19 @@ export default function Parts() {
   async function load(term?: string) {
     setLoading(true);
     try {
-      const res = await api.get("/parts", {
-        params: {
-          q: term || undefined,
-          limit: 60,
-        },
-      });
+      const params: Record<string, string | number> = {
+        limit: 60,
+      };
+
+      if (term && term.trim()) {
+        params.q = term.trim();
+      }
+
+      if (vehicleType !== "all") {
+        params.vehicle_type = vehicleType;
+      }
+
+      const res = await api.get("/parts", { params });
       setRows(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
       console.error(e);
@@ -89,12 +101,14 @@ export default function Parts() {
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicleType]);
 
   useEffect(() => {
     const t = setTimeout(() => load(q), 250);
     return () => clearTimeout(t);
-  }, [q]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, vehicleType]);
 
   async function createManualPart() {
     const cleanName = name.trim();
@@ -146,6 +160,44 @@ export default function Parts() {
             value={q}
             onChange={setQ}
           />
+
+          <div className="grid grid-cols-3 gap-2 sm:max-w-md">
+            <button
+              type="button"
+              onClick={() => setVehicleType("all")}
+              className={`h-11 rounded-2xl border px-3 text-sm font-semibold transition ${
+                vehicleType === "all"
+                  ? "border-[var(--primary)] bg-[color:rgba(47,107,255,0.18)] text-[var(--title)]"
+                  : "border-[var(--border)] bg-[color:rgba(255,255,255,0.03)] text-[var(--muted)] hover:bg-[color:rgba(255,255,255,0.06)]"
+              }`}
+            >
+              Todos
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setVehicleType("car")}
+              className={`h-11 rounded-2xl border px-3 text-sm font-semibold transition ${
+                vehicleType === "car"
+                  ? "border-[var(--primary)] bg-[color:rgba(47,107,255,0.18)] text-[var(--title)]"
+                  : "border-[var(--border)] bg-[color:rgba(255,255,255,0.03)] text-[var(--muted)] hover:bg-[color:rgba(255,255,255,0.06)]"
+              }`}
+            >
+              Carro
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setVehicleType("moto")}
+              className={`h-11 rounded-2xl border px-3 text-sm font-semibold transition ${
+                vehicleType === "moto"
+                  ? "border-[var(--primary)] bg-[color:rgba(47,107,255,0.18)] text-[var(--title)]"
+                  : "border-[var(--border)] bg-[color:rgba(255,255,255,0.03)] text-[var(--muted)] hover:bg-[color:rgba(255,255,255,0.06)]"
+              }`}
+            >
+              Moto
+            </button>
+          </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <button

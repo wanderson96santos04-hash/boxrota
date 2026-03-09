@@ -37,6 +37,7 @@ def parts(
     query: str | None = Query(default=None),
     category: str | None = Query(default=None),
     brand: str | None = Query(default=None),
+    vehicle_type: str | None = Query(default=None),
     limit: int = Query(default=30, ge=1, le=60),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -47,6 +48,7 @@ def parts(
         query=query,
         category=category,
         brand=brand,
+        vehicle_type=vehicle_type,
         limit=limit,
     )
 

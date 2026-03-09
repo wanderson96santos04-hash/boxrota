@@ -53,6 +53,8 @@ type Order = {
   created_at: string;
 };
 
+type VehicleFilter = "all" | "car" | "moto";
+
 function toneAvailability(s: string) {
   if (s === "in_stock") return "success";
   if (s === "low") return "warning";
@@ -89,6 +91,8 @@ export default function Marketplace() {
   const [q, setQ] = useState("");
   const [parts, setParts] = useState<Part[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const [vehicleType, setVehicleType] = useState<VehicleFilter>("all");
 
   const [selected, setSelected] = useState<Part | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -140,9 +144,19 @@ export default function Marketplace() {
   async function search() {
     setLoading(true);
     try {
-      const res = await api.get("/marketplace/parts", {
-        params: { query: q || undefined, limit: 30 },
-      });
+      const params: Record<string, string | number> = {
+        limit: 30,
+      };
+
+      if (q.trim()) {
+        params.query = q.trim();
+      }
+
+      if (vehicleType !== "all") {
+        params.vehicle_type = vehicleType;
+      }
+
+      const res = await api.get("/marketplace/parts", { params });
       setParts(res.data || []);
     } catch (e: any) {
       console.error(e);
@@ -161,7 +175,7 @@ export default function Marketplace() {
     }, 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q]);
+  }, [q, vehicleType]);
 
   async function openOffers(p: Part) {
     setSelected(p);
@@ -197,7 +211,8 @@ export default function Marketplace() {
     const items = cart?.items || [];
     const ids = new Set(items.map((i) => i.chosen_supplier_id || "").filter(Boolean));
     if (ids.size === 1) {
-      const only = items.find((i) => (i.chosen_supplier_id || "") !== "")?.chosen_supplier_id || "";
+      const only =
+        items.find((i) => (i.chosen_supplier_id || "") !== "")?.chosen_supplier_id || "";
       return only;
     }
     return "";
@@ -279,6 +294,41 @@ export default function Marketplace() {
               {cartLoading ? "Atualizando..." : `Carrinho (${cart?.items?.length || 0})`}
             </button>
           </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:max-w-md">
+          <button
+            onClick={() => setVehicleType("all")}
+            className={`h-11 rounded-2xl border px-3 text-sm font-semibold transition ${
+              vehicleType === "all"
+                ? "border-[var(--primary)] bg-[color:rgba(47,107,255,0.18)] text-[var(--title)]"
+                : "border-[var(--border)] bg-[color:rgba(255,255,255,0.03)] text-[var(--muted)] hover:bg-[color:rgba(255,255,255,0.06)]"
+            }`}
+          >
+            Todos
+          </button>
+
+          <button
+            onClick={() => setVehicleType("car")}
+            className={`h-11 rounded-2xl border px-3 text-sm font-semibold transition ${
+              vehicleType === "car"
+                ? "border-[var(--primary)] bg-[color:rgba(47,107,255,0.18)] text-[var(--title)]"
+                : "border-[var(--border)] bg-[color:rgba(255,255,255,0.03)] text-[var(--muted)] hover:bg-[color:rgba(255,255,255,0.06)]"
+            }`}
+          >
+            Carro
+          </button>
+
+          <button
+            onClick={() => setVehicleType("moto")}
+            className={`h-11 rounded-2xl border px-3 text-sm font-semibold transition ${
+              vehicleType === "moto"
+                ? "border-[var(--primary)] bg-[color:rgba(47,107,255,0.18)] text-[var(--title)]"
+                : "border-[var(--border)] bg-[color:rgba(255,255,255,0.03)] text-[var(--muted)] hover:bg-[color:rgba(255,255,255,0.06)]"
+            }`}
+          >
+            Moto
+          </button>
         </div>
 
         <div className="mt-5 space-y-3">
@@ -380,7 +430,10 @@ export default function Marketplace() {
                       {it.brand || "—"} • {it.category || "—"} • {it.qty}x • R$ {it.unit_price_snapshot}
                     </div>
                     <div className="mt-1 text-xs text-[var(--muted)]">
-                      Fornecedor: <span className="text-[var(--title)]">{it.chosen_supplier_name || "não definido"}</span>
+                      Fornecedor:{" "}
+                      <span className="text-[var(--title)]">
+                        {it.chosen_supplier_name || "não definido"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -389,7 +442,8 @@ export default function Marketplace() {
 
             <div className="rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4">
               <div className="text-xs text-[var(--muted)]">
-                Importante: para finalizar, o carrinho precisa ter <b className="text-[var(--title)]">um único fornecedor</b>.
+                Importante: para finalizar, o carrinho precisa ter{" "}
+                <b className="text-[var(--title)]">um único fornecedor</b>.
               </div>
             </div>
           </div>
@@ -422,7 +476,8 @@ export default function Marketplace() {
                       <Badge tone={toneOrder(o.status) as any}>{labelOrder(o.status)}</Badge>
                     </div>
                     <div className="mt-1 text-xs text-[var(--muted)]">
-                      {o.supplier_name} • Total R$ {o.total} • {o.delivery_mode === "pickup" ? "Retirada" : "Entrega"}
+                      {o.supplier_name} • Total R$ {o.total} •{" "}
+                      {o.delivery_mode === "pickup" ? "Retirada" : "Entrega"}
                     </div>
                   </div>
 

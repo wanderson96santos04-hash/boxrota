@@ -118,6 +118,7 @@ def search_parts(
     query: str | None,
     category: str | None,
     brand: str | None,
+    vehicle_type: str | None,
     limit: int = 30,
 ) -> list[Part]:
     q = db.query(Part).filter(Part.active.is_(True))
@@ -130,6 +131,7 @@ def search_parts(
                 func.lower(Part.name).like(like)
                 | func.lower(Part.sku).like(like)
                 | func.lower(Part.brand).like(like)
+                | func.lower(Part.vehicle_compat).like(like)
             )
 
     if category:
@@ -141,6 +143,11 @@ def search_parts(
         b = brand.strip().lower()
         if b:
             q = q.filter(func.lower(Part.brand) == b)
+
+    if vehicle_type:
+        vt = vehicle_type.strip().lower()
+        if vt in {"car", "moto", "both"}:
+            q = q.filter(func.lower(Part.vehicle_type) == vt)
 
     return q.order_by(Part.name.asc()).limit(max(1, min(int(limit), 60))).all()
 

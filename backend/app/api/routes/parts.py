@@ -27,6 +27,7 @@ class PartOut(BaseModel):
     sku: Optional[str] = None
     price: float
     stock_qty: int
+    vehicle_type: Optional[str] = None
 
     @classmethod
     def from_model(cls, part: Part) -> "PartOut":
@@ -36,12 +37,14 @@ class PartOut(BaseModel):
             sku=part.sku or "",
             price=float(part.suggested_price or part.cost_price or 0),
             stock_qty=int(part.stock_qty or 0),
+            vehicle_type=getattr(part, "vehicle_type", None),
         )
 
 
 @router.get("", response_model=list[PartOut])
 def list_parts(
     q: Optional[str] = Query(default=None),
+    vehicle_type: Optional[str] = Query(default=None),
     limit: int = Query(default=60, ge=1, le=100),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -54,8 +57,15 @@ def list_parts(
             or_(
                 func.lower(Part.name).like(term),
                 func.lower(func.coalesce(Part.sku, "")).like(term),
+                func.lower(func.coalesce(Part.vehicle_compat, "")).like(term),
+                func.lower(func.coalesce(Part.brand, "")).like(term),
             )
         )
+
+    if vehicle_type and vehicle_type.strip():
+        vt = vehicle_type.strip().lower()
+        if vt in {"car", "moto", "both"}:
+            query = query.filter(func.lower(func.coalesce(Part.vehicle_type, "both")) == vt)
 
     rows = query.limit(limit).all()
     return [PartOut.from_model(part) for part in rows]
@@ -81,6 +91,7 @@ def create_part(
         brand="Manual",
         category="Oficina",
         vehicle_compat="Universal",
+        vehicle_type="both",
         cost_price=Decimal(data.price or 0),
         suggested_price=Decimal(data.price or 0),
         stock_qty=data.stock_qty,
