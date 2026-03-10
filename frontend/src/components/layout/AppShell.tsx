@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
-import BottomNav from "./BottomNav";
 import api from "../../lib/api";
 
 function getRefreshToken() {
@@ -48,14 +47,14 @@ export default function AppShell() {
   }, [loggingOut, navigate]);
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
+    <div className="min-h-screen overflow-x-hidden bg-[var(--bg)] text-[var(--text)]">
       <div className="mx-auto max-w-[1200px]">
         <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[280px_1fr]">
           <aside className="hidden lg:block">
             <Sidebar />
           </aside>
 
-          <main className="min-h-screen">
+          <main className="min-h-screen min-w-0 overflow-x-hidden">
             <Topbar
               pathname={pathname}
               onOpenMenu={() => setMobileMenuOpen(true)}
@@ -67,7 +66,7 @@ export default function AppShell() {
                   type="button"
                   onClick={handleLogout}
                   disabled={loggingOut}
-                  className="hidden lg:inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] px-4 text-sm font-semibold text-[var(--title)] hover:bg-[color:rgba(255,255,255,0.04)] disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="hidden lg:inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] px-4 text-sm font-semibold text-[var(--title)] hover:bg-[color:rgba(255,255,255,0.04)] disabled:cursor-not-allowed disabled:opacity-60"
                   title={!hasRefresh ? "Sem refresh token (logout local)" : "Sair"}
                 >
                   {loggingOut ? "Saindo..." : "Sair"}
@@ -75,7 +74,7 @@ export default function AppShell() {
               </div>
             </div>
 
-            <div className="px-4 pb-24 pt-4 lg:px-6 lg:pb-10">
+            <div className="min-w-0 overflow-x-hidden px-4 pb-8 pt-4 lg:px-6 lg:pb-10">
               <Outlet />
             </div>
           </main>
@@ -84,13 +83,15 @@ export default function AppShell() {
 
       {mobileMenuOpen ? (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div
+          <button
+            type="button"
             className="absolute inset-0 bg-black/60"
             onClick={() => setMobileMenuOpen(false)}
+            aria-label="Fechar menu"
           />
 
-          <div className="absolute left-0 top-0 h-full w-[290px] max-w-[85vw] bg-[var(--surface)] shadow-2xl">
-            <div className="flex items-center justify-end p-3">
+          <div className="absolute left-0 top-0 h-full w-[290px] max-w-[85vw] overflow-hidden bg-[var(--surface)] shadow-2xl">
+            <div className="flex items-center justify-end border-b border-[var(--border)] p-3">
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(false)}
@@ -102,29 +103,14 @@ export default function AppShell() {
             </div>
 
             <div
+              className="h-[calc(100%-73px)] overflow-y-auto"
               onClick={() => setMobileMenuOpen(false)}
-              className="h-[calc(100%-64px)] overflow-y-auto"
             >
               <Sidebar />
             </div>
           </div>
         </div>
       ) : null}
-
-      <div className="lg:hidden">
-        <BottomNav />
-
-        <div className="fixed bottom-20 left-0 right-0 px-4">
-          <button
-            type="button"
-            onClick={handleLogout}
-            disabled={loggingOut}
-            className="inline-flex h-12 w-full items-center justify-center rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.04)] px-4 text-sm font-semibold text-[var(--title)] hover:bg-[color:rgba(255,255,255,0.06)] shadow-[0_18px_55px_rgba(0,0,0,0.22)] disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {loggingOut ? "Saindo..." : "Sair"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
