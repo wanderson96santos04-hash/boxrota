@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import BottomNav from "./BottomNav";
@@ -18,7 +18,10 @@ function clearSession() {
 
 export default function AppShell() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+
   const [loggingOut, setLoggingOut] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const hasRefresh = useMemo(() => {
     const rt = getRefreshToken();
@@ -33,12 +36,10 @@ export default function AppShell() {
 
       const refresh_token = getRefreshToken();
 
-      // Se não tiver refresh_token, só limpa e sai
       if (refresh_token) {
         await api.post("/auth/logout", { refresh_token });
       }
     } catch {
-      // Mesmo se falhar (token expirado, rede, etc.), a gente encerra a sessão local
     } finally {
       clearSession();
       setLoggingOut(false);
@@ -55,16 +56,18 @@ export default function AppShell() {
           </aside>
 
           <main className="min-h-screen">
-            <Topbar />
+            <Topbar
+              pathname={pathname}
+              onOpenMenu={() => setMobileMenuOpen(true)}
+            />
 
-            {/* Ações de sessão (não depende do Topbar/Sidebar) */}
             <div className="px-4 pt-3 lg:px-6">
               <div className="flex items-center justify-end">
                 <button
                   type="button"
                   onClick={handleLogout}
                   disabled={loggingOut}
-                  className="inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] px-4 text-sm font-semibold text-[var(--title)] hover:bg-[color:rgba(255,255,255,0.04)] disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="hidden lg:inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] px-4 text-sm font-semibold text-[var(--title)] hover:bg-[color:rgba(255,255,255,0.04)] disabled:opacity-60 disabled:cursor-not-allowed"
                   title={!hasRefresh ? "Sem refresh token (logout local)" : "Sair"}
                 >
                   {loggingOut ? "Saindo..." : "Sair"}
@@ -79,10 +82,38 @@ export default function AppShell() {
         </div>
       </div>
 
+      {mobileMenuOpen ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+
+          <div className="absolute left-0 top-0 h-full w-[290px] max-w-[85vw] bg-[var(--surface)] shadow-2xl">
+            <div className="flex items-center justify-end p-3">
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.04)] text-[var(--title)] hover:bg-[color:rgba(255,255,255,0.08)]"
+                aria-label="Fechar menu"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div
+              onClick={() => setMobileMenuOpen(false)}
+              className="h-[calc(100%-64px)] overflow-y-auto"
+            >
+              <Sidebar />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="lg:hidden">
         <BottomNav />
 
-        {/* Botão Sair no mobile (fixo acima do bottom nav) */}
         <div className="fixed bottom-20 left-0 right-0 px-4">
           <button
             type="button"

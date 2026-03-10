@@ -1,4 +1,3 @@
-import { useLocation, useNavigate } from "react-router-dom";
 import { Input } from "../ui/Input";
 import { Badge } from "../ui/Badge";
 
@@ -12,23 +11,29 @@ function titleFromPath(pathname: string) {
   return "BoxRota";
 }
 
-export default function Topbar() {
-  const { pathname } = useLocation();
-  const navigate = useNavigate();
-  const title = titleFromPath(pathname);
+type TopbarProps = {
+  pathname: string;
+  onOpenMenu?: () => void;
+};
 
-  function logout() {
-    localStorage.removeItem("boxrota_access_token");
-    localStorage.removeItem("boxrota_refresh_token");
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    navigate("/auth/login");
-  }
+export default function Topbar({ pathname, onOpenMenu }: TopbarProps) {
+  const title = titleFromPath(pathname);
 
   return (
     <div className="sticky top-0 z-30 border-b border-[var(--border)] bg-[color:rgba(11,16,32,0.72)] backdrop-blur">
       <div className="px-4 py-4 lg:px-6">
         <div className="flex items-center gap-3">
+          <div className="lg:hidden">
+            <button
+              type="button"
+              onClick={onOpenMenu}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.04)] text-[var(--title)] hover:bg-[color:rgba(255,255,255,0.08)]"
+              aria-label="Abrir menu"
+            >
+              ☰
+            </button>
+          </div>
+
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h1 className="truncate text-lg font-semibold text-[var(--title)]">
@@ -53,12 +58,6 @@ export default function Topbar() {
           <div className="flex items-center gap-2">
             <button className="hidden rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[color:rgba(255,255,255,0.04)] hover:text-[var(--title)] sm:inline-flex">
               Novo serviço
-            </button>
-            <button
-              onClick={logout}
-              className="rounded-xl bg-[color:rgba(255,255,255,0.06)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[color:rgba(255,255,255,0.10)] hover:text-[var(--title)]"
-            >
-              Sair
             </button>
           </div>
         </div>
