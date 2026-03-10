@@ -162,7 +162,7 @@ function KpiCard({
           <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             {label}
           </div>
-          <div className="mt-2 break-words text-3xl font-semibold text-[var(--title)]">
+          <div className="mt-2 text-3xl font-semibold text-[var(--title)] md:whitespace-nowrap">
             {value}
           </div>
           <div className="mt-2 text-sm text-[var(--muted)]">{hint}</div>
@@ -323,7 +323,7 @@ export default function Dashboard() {
                 <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                   Faturamento do mês
                 </div>
-                <div className="mt-2 break-words text-3xl font-semibold text-[var(--title)]">
+                <div className="mt-2 text-3xl font-semibold text-[var(--title)] md:whitespace-nowrap">
                   {loading ? "—" : formatBRL(monthRevenue)}
                 </div>
                 <div className="mt-2 text-sm text-[var(--muted)]">
@@ -382,7 +382,6 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <>
-                  {/* Mobile: cards */}
                   <div className="space-y-3 md:hidden">
                     {rows.map((r, idx) => (
                       <div
@@ -418,7 +417,6 @@ export default function Dashboard() {
                     ))}
                   </div>
 
-                  {/* Desktop: tabela */}
                   <div className="hidden md:block">
                     <table className="w-full border-separate border-spacing-0">
                       <thead>
