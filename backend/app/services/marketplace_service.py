@@ -791,3 +791,78 @@ def create_supplier_part(
     db.flush()
     db.refresh(row)
     return row
+def build_whatsapp_order_message(
+    db: Session,
+    *,
+    user: User,
+    order_id: uuid.UUID,
+) -> str:
+    po = get_order(db, user=user, order_id=order_id)
+
+    supplier = db.query(Supplier).filter(Supplier.id == po.supplier_id).one_or_none()
+    if not supplier:
+        raise AppException(404, "not_found", "Fornecedor não encontrado.")
+
+    items = (
+        db.query(PurchaseOrderItem, Part)
+        .join(Part, Part.id == PurchaseOrderItem.part_id)
+        .filter(PurchaseOrderItem.purchase_order_id == po.id)
+        .order_by(Part.name.asc())
+        .all()
+    )
+
+    workshop_name = ""
+    workshop_phone = ""
+    workshop_city = ""
+
+    if getattr(user, "workshop", None):
+        workshop_name = user.workshop.name or ""
+        workshop_phone = user.workshop.phone or ""
+        workshop_city = user.workshop.city or ""
+
+    item_lines = []
+    for i, (it, p) in enumerate(items, start=1):
+        lines = [
+            f"{i}. {p.name}",
+            f"Qtd: {int(it.qty or 0)}",
+            f"Preço base: R$ {_money_str(Decimal(it.unit_price or 0))}",
+        ]
+        if p.sku:
+            lines.append(f"SKU: {p.sku}")
+        item_lines.append("\n".join(lines))
+
+    items_text = "\n\n".join(item_lines) if item_lines else "Nenhum item."
+
+    delivery_address = (po.delivery_address or "").strip() or "Endereço de entrega não informado."
+
+    lines = [
+        "BOXROTA • SOLICITAÇÃO DE PEDIDO DE PEÇAS",
+        "",
+        f"Oficina: {workshop_name or '-'}",
+        f"Telefone: {workshop_phone or '-'}",
+        f"Cidade: {workshop_city or '-'}",
+        "",
+        f"Fornecedor: {supplier.name}",
+        "",
+        "ITENS SOLICITADOS",
+        "",
+        items_text,
+        "",
+        "RESUMO INICIAL",
+        f"Subtotal dos itens: R$ {_money_str(Decimal(po.subtotal or 0))}",
+        "Frete: confirmar",
+        "Desconto: confirmar se houver",
+        "Total final: confirmar pelo fornecedor",
+        "",
+        "ENTREGA",
+        delivery_address,
+        "",
+        "OBSERVAÇÃO",
+        "Favor confirmar:",
+        "- disponibilidade",
+        "- valor do frete",
+        "- prazo de envio",
+        "- valor final do pedido",
+    ]
+
+    return "\n".join(lines).strip()
