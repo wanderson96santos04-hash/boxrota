@@ -15,6 +15,10 @@ import Parts from "../pages/app/Parts";
 import Marketplace from "../pages/app/Marketplace";
 import Returns from "../pages/app/Returns";
 
+/* NOVAS TELAS ADMIN */
+import Suppliers from "../pages/app/Suppliers";
+import Offers from "../pages/app/Offers";
+
 function getAccessToken() {
   return (
     localStorage.getItem("boxrota_access_token") ||
@@ -104,6 +108,10 @@ export const router = createBrowserRouter([
           { path: "vehicles", element: <Vehicles /> },
           { path: "parts", element: <Parts /> },
           { path: "marketplace", element: <Marketplace /> },
+
+          /* ROTAS ADMIN DO MARKETPLACE */
+          { path: "admin/suppliers", element: <Suppliers /> },
+          { path: "admin/offers", element: <Offers /> },
         ],
       },
     ],

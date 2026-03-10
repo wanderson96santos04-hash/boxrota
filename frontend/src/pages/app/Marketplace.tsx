@@ -192,14 +192,20 @@ export default function Marketplace() {
   }
 
   async function addToCart(p: Part, offer?: Offer) {
+    if (!offer?.supplier_id) {
+      alert("Essa peça só pode ser adicionada ao carrinho quando houver fornecedor disponível.");
+      return;
+    }
+
     try {
       await api.post("/marketplace/cart/items", {
         part_id: p.id,
         qty: 1,
-        chosen_supplier_id: offer?.supplier_id || null,
-        unit_price_snapshot: offer?.price || p.suggested_price || "0.00",
+        chosen_supplier_id: offer.supplier_id,
+        unit_price_snapshot: offer.price,
       });
       await loadCart();
+      setSelected(null);
     } catch (e: any) {
       console.error(e);
       alert(e?.response?.data?.message || "Não foi possível adicionar ao carrinho.");
@@ -391,6 +397,9 @@ export default function Marketplace() {
                         Compat.: {p.vehicle_compat}
                       </div>
                     ) : null}
+                    <div className="mt-2 text-xs text-[var(--muted)]">
+                      Verifique as ofertas disponíveis para consultar fornecedor, prazo e preço real.
+                    </div>
                   </div>
 
                   <div className="flex flex-col gap-2">
@@ -399,12 +408,6 @@ export default function Marketplace() {
                       className="h-10 rounded-2xl bg-[color:rgba(255,255,255,0.06)] px-4 text-xs font-semibold text-[var(--title)] hover:bg-[color:rgba(255,255,255,0.10)]"
                     >
                       Ver ofertas
-                    </button>
-                    <button
-                      onClick={() => addToCart(p)}
-                      className="h-10 rounded-2xl bg-[var(--primary)] px-4 text-xs font-semibold text-white hover:bg-[var(--primaryHover)]"
-                    >
-                      Add carrinho
                     </button>
                   </div>
                 </div>
@@ -433,7 +436,7 @@ export default function Marketplace() {
               Carrinho vazio
             </div>
             <div className="mt-2 text-sm text-[var(--muted)]">
-              Adicione peças para gerar pedido e manter histórico de compra dentro do BoxRota.
+              Adicione peças com fornecedor real para gerar pedido e manter histórico de compra dentro do BoxRota.
             </div>
           </div>
         ) : (
@@ -546,7 +549,7 @@ export default function Marketplace() {
                   Ofertas • {selected.name}
                 </div>
                 <div className="mt-1 text-xs text-[var(--muted)]">
-                  Escolha o melhor preço e adicione em 1 toque.
+                  Consulte somente fornecedores reais vinculados a esta peça.
                 </div>
               </div>
               <button
@@ -563,10 +566,10 @@ export default function Marketplace() {
               ) : offers.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-6">
                   <div className="text-sm font-semibold text-[var(--title)]">
-                    Sem ofertas para esta peça
+                    Sem fornecedor disponível para esta peça
                   </div>
                   <div className="mt-2 text-sm text-[var(--muted)]">
-                    Vincule fornecedores na oficina para comparar preços aqui.
+                    Esta peça ainda não possui oferta real cadastrada no marketplace.
                   </div>
                 </div>
               ) : (
@@ -584,6 +587,11 @@ export default function Marketplace() {
                           R$ {o.price}
                           {o.lead_time_days != null ? ` • prazo ${o.lead_time_days}d` : ""}
                         </div>
+                        {o.supplier_sku ? (
+                          <div className="mt-1 text-xs text-[var(--muted)]">
+                            SKU fornecedor: {o.supplier_sku}
+                          </div>
+                        ) : null}
                         <div className="mt-2">
                           <Badge tone={toneAvailability(o.availability_status) as any}>
                             {labelAvailability(o.availability_status)}

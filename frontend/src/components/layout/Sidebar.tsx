@@ -11,6 +11,11 @@ const nav = [
   { to: "/app/marketplace", label: "Marketplace" },
 ];
 
+const adminNav = [
+  { to: "/app/admin/suppliers", label: "Fornecedores" },
+  { to: "/app/admin/offers", label: "Ofertas de Peças" },
+];
+
 function clsActive(isActive: boolean) {
   return [
     "group flex items-center justify-between gap-3 rounded-2xl px-4 py-3 transition-all",
@@ -95,6 +100,28 @@ export default function Sidebar() {
           <div className="space-y-2">
             {nav.map((i) => (
               <NavLink key={i.to} to={i.to} end={i.to === "/app"}>
+                {({ isActive }) => (
+                  <div className={clsActive(isActive)}>
+                    <span className="text-sm font-medium">
+                      {i.label}
+                    </span>
+
+                    <span className="text-xs text-[var(--muted)] opacity-0 transition group-hover:opacity-100">
+                      →
+                    </span>
+                  </div>
+                )}
+              </NavLink>
+            ))}
+          </div>
+
+          <div className="mt-6 px-3 pb-3 text-[11px] font-semibold tracking-wide text-[var(--muted)]">
+            ADMIN MARKETPLACE
+          </div>
+
+          <div className="space-y-2">
+            {adminNav.map((i) => (
+              <NavLink key={i.to} to={i.to}>
                 {({ isActive }) => (
                   <div className={clsActive(isActive)}>
                     <span className="text-sm font-medium">
