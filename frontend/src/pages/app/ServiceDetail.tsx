@@ -369,8 +369,8 @@ export default function ServiceDetail() {
                       </div>
                     </div>
 
-                    <div className="text-sm font-semibold text-[var(--title)]">
-                      {money(Number(part.price || 0))}
+                    <div className="text-xs text-[var(--muted)]">
+                      Catálogo interno
                     </div>
                   </div>
                 </button>
@@ -385,7 +385,7 @@ export default function ServiceDetail() {
             <span className="font-semibold text-[var(--title)]">
               {selectedPart.name}
             </span>{" "}
-            • {money(Number(selectedPart.price || 0))}
+            • pronta para lançar na OS
           </div>
         ) : null}
       </Card>
