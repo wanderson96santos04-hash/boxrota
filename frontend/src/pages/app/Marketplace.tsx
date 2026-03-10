@@ -53,8 +53,6 @@ type Order = {
   created_at: string;
 };
 
-type VehicleFilter = "all" | "car" | "moto";
-
 function toneAvailability(s: string) {
   if (s === "in_stock") return "success";
   if (s === "low") return "warning";
@@ -92,7 +90,7 @@ export default function Marketplace() {
   const [parts, setParts] = useState<Part[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const [vehicleType, setVehicleType] = useState<VehicleFilter>("all");
+  const [vehicleType, setVehicleType] = useState<"all" | "car" | "moto">("all");
 
   const [selected, setSelected] = useState<Part | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -109,6 +107,7 @@ export default function Marketplace() {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [sendingWhatsappId, setSendingWhatsappId] = useState<string | null>(null);
 
   async function loadCart() {
     setCartLoading(true);
@@ -263,6 +262,29 @@ export default function Marketplace() {
     } catch (e: any) {
       console.error(e);
       alert(e?.response?.data?.message || "Não foi possível atualizar.");
+    }
+  }
+
+  async function sendOrderToWhatsApp(orderId: string) {
+    setSendingWhatsappId(orderId);
+    try {
+      const res = await api.get(`/marketplace/orders/${orderId}/whatsapp-link`);
+      const url = res?.data?.whatsapp_url;
+
+      if (!url) {
+        alert("Não foi possível gerar o link do WhatsApp.");
+        return;
+      }
+
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      console.error(e);
+      alert(
+        e?.response?.data?.message ||
+          "Não foi possível abrir o WhatsApp do fornecedor."
+      );
+    } finally {
+      setSendingWhatsappId(null);
     }
   }
 
@@ -482,6 +504,13 @@ export default function Marketplace() {
                   </div>
 
                   <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => sendOrderToWhatsApp(o.id)}
+                      disabled={sendingWhatsappId === o.id}
+                      className="h-10 rounded-2xl bg-[var(--primary)] px-4 text-xs font-semibold text-white hover:bg-[var(--primaryHover)] disabled:opacity-60"
+                    >
+                      {sendingWhatsappId === o.id ? "Abrindo..." : "WhatsApp"}
+                    </button>
                     <button
                       onClick={() => updateOrderStatus(o.id, "confirmed")}
                       className="h-10 rounded-2xl bg-[color:rgba(255,255,255,0.06)] px-4 text-xs font-semibold text-[var(--title)] hover:bg-[color:rgba(255,255,255,0.10)]"
