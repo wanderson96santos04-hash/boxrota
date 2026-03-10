@@ -141,7 +141,7 @@ export default function Sidebar() {
 
 
         {/* LOGOUT */}
-        <div className="px-6 pb-6">
+<div className="mt-auto px-6 pb-6">
 
           <button
             onClick={logout}
