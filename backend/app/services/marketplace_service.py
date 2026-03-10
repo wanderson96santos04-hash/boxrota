@@ -1,6 +1,7 @@
 import re
 import uuid
 from decimal import Decimal, ROUND_HALF_UP
+from urllib.parse import quote
 
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session
@@ -791,6 +792,8 @@ def create_supplier_part(
     db.flush()
     db.refresh(row)
     return row
+
+
 def build_whatsapp_order_message(
     db: Session,
     *,
@@ -866,6 +869,58 @@ def build_whatsapp_order_message(
     ]
 
     return "\n".join(lines).strip()
+
+
+def _normalize_whatsapp_number(raw: str | None) -> str | None:
+    number = re.sub(r"\D", "", raw or "")
+    if not number:
+        return None
+
+    if number.startswith("0"):
+        number = number.lstrip("0")
+
+    if len(number) < 10:
+        return None
+
+    if not number.startswith("55"):
+        number = f"55{number}"
+
+    return number
+
+
+def build_whatsapp_order_link(
+    db: Session,
+    *,
+    user: User,
+    order_id: uuid.UUID,
+) -> dict:
+    po = get_order(db, user=user, order_id=order_id)
+
+    supplier = db.query(Supplier).filter(Supplier.id == po.supplier_id).one_or_none()
+    if not supplier:
+        raise AppException(404, "not_found", "Fornecedor não encontrado.")
+
+    normalized_whatsapp = _normalize_whatsapp_number(supplier.whatsapp)
+    if not normalized_whatsapp:
+        raise AppException(400, "missing_supplier_whatsapp", "Fornecedor sem WhatsApp cadastrado.")
+
+    message = build_whatsapp_order_message(
+        db,
+        user=user,
+        order_id=order_id,
+    )
+
+    whatsapp_url = f"https://wa.me/{normalized_whatsapp}?text={quote(message)}"
+
+    return {
+        "supplier_id": str(supplier.id),
+        "supplier_name": supplier.name,
+        "supplier_whatsapp": normalized_whatsapp,
+        "message": message,
+        "whatsapp_url": whatsapp_url,
+    }
+
+
 def remove_cart_item(
     db: Session,
     *,

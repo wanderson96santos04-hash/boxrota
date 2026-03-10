@@ -22,6 +22,7 @@ from app.schemas.marketplace import (
 from app.services.marketplace_service import (
     add_cart_item,
     add_order_items_to_service,
+    build_whatsapp_order_link,
     build_whatsapp_order_message,
     clear_cart,
     create_order_from_cart,
@@ -308,6 +309,21 @@ def order_whatsapp_message(
         order_id=oid,
     )
     return {"message": message}
+
+
+@router.get("/orders/{order_id}/whatsapp-link")
+def order_whatsapp_link(
+    order_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    oid = uuid.UUID(order_id)
+    data = build_whatsapp_order_link(
+        db,
+        user=user,
+        order_id=oid,
+    )
+    return data
 
 
 @router.post("/orders/{order_id}/status", response_model=PurchaseOrderOut)
