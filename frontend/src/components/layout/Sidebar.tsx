@@ -38,14 +38,11 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="sticky top-0 h-screen w-[270px] border-r border-[var(--border)] bg-[var(--surface)]">
+    <div className="sticky top-0 relative h-screen w-[270px] border-r border-[var(--border)] bg-[var(--surface)]">
       <div className="flex h-full flex-col">
-
         {/* LOGO */}
         <div className="px-6 pt-6">
-
           <div className="flex items-center gap-4">
-
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600/15 ring-1 ring-blue-500/30 shadow-md">
               <img
                 src={logo}
@@ -63,13 +60,10 @@ export default function Sidebar() {
                 Retorno automático
               </div>
             </div>
-
           </div>
-
 
           {/* PLANO */}
           <div className="mt-6 rounded-2xl border border-[var(--border)] bg-white/5 p-4">
-
             <div className="flex items-center justify-between">
               <div className="text-sm font-semibold text-[var(--title)]">
                 Plano atual
@@ -82,17 +76,14 @@ export default function Sidebar() {
               Marketplace com pedidos é Pro.
             </div>
 
-            <button className="mt-4 w-full rounded-xl bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[var(--primaryHover)] transition">
+            <button className="mt-4 w-full rounded-xl bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--primaryHover)]">
               Desbloquear Pro
             </button>
-
           </div>
         </div>
 
-
         {/* NAV */}
-        <nav className="mt-7 flex-1 px-3">
-
+        <nav className="mt-7 flex-1 overflow-y-auto px-3 pb-28">
           <div className="px-3 pb-3 text-[11px] font-semibold tracking-wide text-[var(--muted)]">
             ROTINA DA OFICINA
           </div>
@@ -102,9 +93,7 @@ export default function Sidebar() {
               <NavLink key={i.to} to={i.to} end={i.to === "/app"}>
                 {({ isActive }) => (
                   <div className={clsActive(isActive)}>
-                    <span className="text-sm font-medium">
-                      {i.label}
-                    </span>
+                    <span className="text-sm font-medium">{i.label}</span>
 
                     <span className="text-xs text-[var(--muted)] opacity-0 transition group-hover:opacity-100">
                       →
@@ -124,9 +113,7 @@ export default function Sidebar() {
               <NavLink key={i.to} to={i.to}>
                 {({ isActive }) => (
                   <div className={clsActive(isActive)}>
-                    <span className="text-sm font-medium">
-                      {i.label}
-                    </span>
+                    <span className="text-sm font-medium">{i.label}</span>
 
                     <span className="text-xs text-[var(--muted)] opacity-0 transition group-hover:opacity-100">
                       →
@@ -136,22 +123,17 @@ export default function Sidebar() {
               </NavLink>
             ))}
           </div>
-
         </nav>
 
-
         {/* LOGOUT */}
-<div className="mt-auto px-6 pb-6">
-
+        <div className="absolute bottom-0 left-0 right-0 bg-[var(--surface)] px-6 pb-6 pt-3">
           <button
             onClick={logout}
             className="w-full rounded-2xl border border-[var(--border)] bg-white/5 px-4 py-3 text-left text-sm font-medium text-[var(--text)] transition hover:bg-white/10 hover:text-[var(--title)]"
           >
             Sair
           </button>
-
         </div>
-
       </div>
     </div>
   );
