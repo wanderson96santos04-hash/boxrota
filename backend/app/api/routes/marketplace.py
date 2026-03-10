@@ -23,6 +23,7 @@ from app.services.marketplace_service import (
     add_cart_item,
     add_order_items_to_service,
     build_whatsapp_order_message,
+    clear_cart,
     create_order_from_cart,
     create_supplier,
     create_supplier_part,
@@ -33,6 +34,7 @@ from app.services.marketplace_service import (
     list_orders,
     list_suppliers,
     order_to_dict,
+    remove_cart_item,
     search_parts,
     update_order_status,
 )
@@ -215,6 +217,38 @@ def cart(
 ):
     c = get_cart(db, user=user)
     return CartOut(**c)
+
+
+@router.delete("/cart/items/{item_id}", response_model=CartOut)
+def remove_item_from_cart(
+    item_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    iid = uuid.UUID(item_id)
+
+    cart = remove_cart_item(
+        db,
+        user=user,
+        item_id=iid,
+    )
+    db.commit()
+
+    return CartOut(**cart)
+
+
+@router.delete("/cart/clear", response_model=CartOut)
+def clear_cart_endpoint(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    cart = clear_cart(
+        db,
+        user=user,
+    )
+    db.commit()
+
+    return CartOut(**cart)
 
 
 @router.post("/orders/from-cart", response_model=PurchaseOrderOut)
