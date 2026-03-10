@@ -866,3 +866,43 @@ def build_whatsapp_order_message(
     ]
 
     return "\n".join(lines).strip()
+def remove_cart_item(
+    db: Session,
+    *,
+    user: User,
+    item_id: uuid.UUID,
+) -> dict:
+    cart = _get_or_create_open_cart(db, user=user)
+
+    item = (
+        db.query(CartItem)
+        .filter(
+            CartItem.id == item_id,
+            CartItem.cart_id == cart.id,
+        )
+        .one_or_none()
+    )
+    if not item:
+        raise AppException(404, "not_found", "Item do carrinho não encontrado.")
+
+    db.delete(item)
+    db.flush()
+
+    return get_cart(db, user=user)
+
+
+def clear_cart(
+    db: Session,
+    *,
+    user: User,
+) -> dict:
+    cart = _get_or_create_open_cart(db, user=user)
+
+    (
+        db.query(CartItem)
+        .filter(CartItem.cart_id == cart.id)
+        .delete(synchronize_session=False)
+    )
+    db.flush()
+
+    return get_cart(db, user=user)
