@@ -18,17 +18,6 @@ type Part = {
   created_at?: string;
 };
 
-function money(v: number) {
-  try {
-    return Number(v || 0).toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    });
-  } catch {
-    return `R$ ${v}`;
-  }
-}
-
 function extractErrorMessage(err: any): string {
   const data = err?.response?.data;
 
@@ -253,7 +242,7 @@ export default function Parts() {
                 />
 
                 <Input
-                  placeholder="Preço (ex: 200)"
+                  placeholder="Preço interno (ex: 200)"
                   value={price}
                   onChange={setPrice}
                 />
@@ -297,12 +286,6 @@ export default function Parts() {
               </div>
             ) : (
               list.map((part) => {
-                const rawPrice = part.suggested_price ?? part.price ?? 0;
-                const numericPrice =
-                  typeof rawPrice === "string"
-                    ? Number(rawPrice.replace(",", "."))
-                    : Number(rawPrice || 0);
-
                 return (
                   <div
                     key={part.id}
@@ -335,8 +318,8 @@ export default function Parts() {
                       </div>
 
                       <div className="text-right">
-                        <div className="text-base font-semibold text-[var(--title)]">
-                          {money(numericPrice)}
+                        <div className="text-xs text-[var(--muted)]">
+                          Catálogo interno
                         </div>
 
                         <div className="mt-2 text-xs font-medium text-[var(--primary)]">
