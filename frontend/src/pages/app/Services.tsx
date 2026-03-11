@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import api from "../../lib/api";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
@@ -49,8 +49,9 @@ function normalizePlate(v: string) {
 }
 
 export default function Services() {
+  const [params] = useSearchParams();
   const [services, setServices] = useState<Service[]>([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(params.get("q") || "");
 
   const [plate, setPlate] = useState("");
   const [customer, setCustomer] = useState("");
