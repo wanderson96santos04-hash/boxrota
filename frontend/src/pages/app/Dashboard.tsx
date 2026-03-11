@@ -228,10 +228,17 @@ export default function Dashboard() {
       "topbar-quick-search"
     ) as HTMLInputElement | null;
 
-    if (input) {
-      input.focus();
-      input.select();
+    if (!input) return;
+
+    const term = (input.value || "").trim();
+
+    if (term) {
+      navigate(`/app/services?q=${encodeURIComponent(term)}`);
+      return;
     }
+
+    input.focus();
+    input.select();
   }
 
   useEffect(() => {
