@@ -62,7 +62,7 @@ def upsert_rule(db: Session, *, user: User, name: str, days_after: int, active: 
 
     r.name = (name or "Retorno").strip()[:80] or "Retorno"
     r.days_after = int(days_after)
-    if r.days_after < 1 or r.days_after > 3650:
+    if r.days_after < 0 or r.days_after > 3650:
         raise AppException(400, "invalid_days_after", "days_after inválido.")
     r.active = bool(active)
 
@@ -92,7 +92,7 @@ def _build_whatsapp_message(
 def ensure_return_for_finalized_service(db: Session, *, user: User, service: Service) -> Return | None:
     if service.workshop_id != user.workshop_id:
         raise AppException(403, "forbidden", "Sem permissão para esta ação.")
-    if service.status != "finalized":
+    if service.status not in {"completed", "finalized"}:
         return None
 
     existing = (
@@ -104,7 +104,8 @@ def ensure_return_for_finalized_service(db: Session, *, user: User, service: Ser
         return existing
 
     rule = get_active_rule(db, workshop_id=user.workshop_id)
-    due = _now() + timedelta(days=int(rule.days_after or 180))
+    days_after = 180 if rule.days_after is None else int(rule.days_after)
+    due = _now() + timedelta(days=days_after)
 
     vehicle = (
         db.query(Vehicle)
