@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Input } from "../ui/Input";
 import { Badge } from "../ui/Badge";
 
@@ -20,12 +19,15 @@ type TopbarProps = {
 
 export default function Topbar({ pathname, onOpenMenu }: TopbarProps) {
   const title = titleFromPath(pathname);
-  const navigate = useNavigate();
   const [search, setSearch] = useState("");
+
+  function goTo(path: string) {
+    window.location.href = path;
+  }
 
   function runSearch() {
     const term = (search || "").trim();
-    navigate(
+    goTo(
       term
         ? `/app/services?q=${encodeURIComponent(term)}`
         : "/app/services"
@@ -100,7 +102,8 @@ export default function Topbar({ pathname, onOpenMenu }: TopbarProps) {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => navigate("/app/services")}
+              type="button"
+              onClick={() => goTo("/app/services")}
               className="hidden rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[color:rgba(255,255,255,0.04)] hover:text-[var(--title)] sm:inline-flex"
             >
               Novo serviço
