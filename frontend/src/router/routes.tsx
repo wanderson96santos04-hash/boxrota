@@ -14,6 +14,7 @@ import Vehicles from "../pages/app/Vehicles";
 import Parts from "../pages/app/Parts";
 import Marketplace from "../pages/app/Marketplace";
 import Returns from "../pages/app/Returns";
+import Reports from "../pages/app/Reports";
 
 /* NOVAS TELAS ADMIN */
 import Suppliers from "../pages/app/Suppliers";
@@ -104,6 +105,7 @@ export const router = createBrowserRouter([
           { path: "services", element: <Services /> },
           { path: "services/:id", element: <ServiceDetail /> },
           { path: "returns", element: <Returns /> },
+          { path: "reports", element: <Reports /> },
           { path: "customers", element: <Customers /> },
           { path: "vehicles", element: <Vehicles /> },
           { path: "parts", element: <Parts /> },
