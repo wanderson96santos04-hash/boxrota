@@ -224,8 +224,8 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
 
   function focusQuickSearch() {
-    const input = document.querySelector(
-      'input[placeholder*="Buscar rápido"]'
+    const input = document.getElementById(
+      "topbar-quick-search"
     ) as HTMLInputElement | null;
 
     if (input) {
@@ -319,7 +319,7 @@ export default function Dashboard() {
               <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-[color:rgba(255,255,255,0.10)] text-xs">
                 ⌕
               </span>
-              <span>Buscar rápida</span>
+              <span>Busca rápida</span>
               <span className="rounded-lg border border-[var(--border)] bg-[color:rgba(255,255,255,0.04)] px-2 py-1 text-[10px] font-medium text-[var(--muted)]">
                 Ctrl K
               </span>
