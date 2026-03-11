@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Input } from "../ui/Input";
 import { Badge } from "../ui/Badge";
 
@@ -18,6 +20,44 @@ type TopbarProps = {
 
 export default function Topbar({ pathname, onOpenMenu }: TopbarProps) {
   const title = titleFromPath(pathname);
+  const navigate = useNavigate();
+  const [search, setSearch] = useState("");
+
+  function runSearch() {
+    const term = (search || "").trim();
+    navigate(
+      term
+        ? `/app/services?q=${encodeURIComponent(term)}`
+        : "/app/services"
+    );
+  }
+
+  function handleInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      runSearch();
+    }
+  }
+
+  useEffect(() => {
+    function onGlobalKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+
+        const input = document.querySelector(
+          'input[placeholder*="Buscar rápido"]'
+        ) as HTMLInputElement | null;
+
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      }
+    }
+
+    window.addEventListener("keydown", onGlobalKeyDown);
+    return () => window.removeEventListener("keydown", onGlobalKeyDown);
+  }, []);
 
   return (
     <div className="sticky top-0 z-30 border-b border-[var(--border)] bg-[color:rgba(11,16,32,0.72)] backdrop-blur">
@@ -52,18 +92,29 @@ export default function Topbar({ pathname, onOpenMenu }: TopbarProps) {
             <Input
               placeholder="Buscar rápido: placa, cliente, telefone, OS..."
               rightHint="Ctrl K"
+              value={search}
+              onChange={setSearch}
+              onKeyDown={handleInputKeyDown}
             />
           </div>
 
           <div className="flex items-center gap-2">
-            <button className="hidden rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[color:rgba(255,255,255,0.04)] hover:text-[var(--title)] sm:inline-flex">
+            <button
+              onClick={() => navigate("/app/services")}
+              className="hidden rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[color:rgba(255,255,255,0.04)] hover:text-[var(--title)] sm:inline-flex"
+            >
               Novo serviço
             </button>
           </div>
         </div>
 
         <div className="mt-3 lg:hidden">
-          <Input placeholder="Buscar: placa, cliente, telefone, OS..." />
+          <Input
+            placeholder="Buscar: placa, cliente, telefone, OS..."
+            value={search}
+            onChange={setSearch}
+            onKeyDown={handleInputKeyDown}
+          />
         </div>
       </div>
     </div>
