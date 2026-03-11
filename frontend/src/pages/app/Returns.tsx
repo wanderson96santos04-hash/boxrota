@@ -41,6 +41,18 @@ function waLink(phoneDigits: string, message: string) {
   return `https://wa.me/55${phone}?text=${text}`;
 }
 
+function buildReturnMessage(name: string, plate: string) {
+  return `Olá, ${name}! 👋
+
+Aqui é da equipe da BoxRota.
+
+Estamos passando para saber se ficou tudo certo com o atendimento do veículo ${plate}.
+
+Seu feedback é muito importante para nós. Se precisar de qualquer suporte ou quiser agendar um novo retorno, estamos à disposição.
+
+Obrigado pela confiança! 🚗🔧`;
+}
+
 export default function Returns() {
   const [rows, setRows] = useState<ReturnRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +75,11 @@ export default function Returns() {
   }
 
   async function saveRule() {
-    const days = Math.max(1, Math.min(3650, parseInt(ruleDays || "180", 10) || 180));
+    const parsedDays = parseInt(ruleDays ?? "180", 10);
+    const days = Number.isNaN(parsedDays)
+      ? 180
+      : Math.max(0, Math.min(3650, parsedDays));
+
     setSavingRule(true);
     try {
       await api.post("/returns/rule", {
@@ -72,6 +88,7 @@ export default function Returns() {
         active: Boolean(ruleActive),
       });
       await loadRule();
+      await loadReturns();
     } catch (e) {
       console.error(e);
     } finally {
@@ -140,7 +157,9 @@ export default function Returns() {
             <button
               onClick={() => setStatus("")}
               className={`h-12 rounded-2xl border border-[var(--border)] px-3 text-sm font-semibold ${
-                status === "" ? "bg-[color:rgba(47,107,255,0.18)] text-[var(--title)]" : "bg-[color:rgba(255,255,255,0.03)] text-[var(--muted)]"
+                status === ""
+                  ? "bg-[color:rgba(47,107,255,0.18)] text-[var(--title)]"
+                  : "bg-[color:rgba(255,255,255,0.03)] text-[var(--muted)]"
               }`}
             >
               Todos
@@ -148,7 +167,9 @@ export default function Returns() {
             <button
               onClick={() => setStatus("pending")}
               className={`h-12 rounded-2xl border border-[var(--border)] px-3 text-sm font-semibold ${
-                status === "pending" ? "bg-[color:rgba(255,176,32,0.18)] text-[var(--title)]" : "bg-[color:rgba(255,255,255,0.03)] text-[var(--muted)]"
+                status === "pending"
+                  ? "bg-[color:rgba(255,176,32,0.18)] text-[var(--title)]"
+                  : "bg-[color:rgba(255,255,255,0.03)] text-[var(--muted)]"
               }`}
             >
               Pendentes
@@ -156,7 +177,9 @@ export default function Returns() {
             <button
               onClick={() => setStatus("sent")}
               className={`h-12 rounded-2xl border border-[var(--border)] px-3 text-sm font-semibold ${
-                status === "sent" ? "bg-[color:rgba(47,107,255,0.18)] text-[var(--title)]" : "bg-[color:rgba(255,255,255,0.03)] text-[var(--muted)]"
+                status === "sent"
+                  ? "bg-[color:rgba(47,107,255,0.18)] text-[var(--title)]"
+                  : "bg-[color:rgba(255,255,255,0.03)] text-[var(--muted)]"
               }`}
             >
               Enviados
@@ -167,7 +190,9 @@ export default function Returns() {
         <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-sm font-semibold text-[var(--title)]">Regra de retorno</div>
+              <div className="text-sm font-semibold text-[var(--title)]">
+                Regra de retorno
+              </div>
               <div className="mt-1 text-xs text-[var(--muted)]">
                 Ao finalizar OS, agenda automaticamente.
               </div>
@@ -216,9 +241,7 @@ export default function Returns() {
               const phone = (r.customer_phone || "").replace(/\D/g, "");
               const plate = (r.vehicle_plate || "-").toUpperCase();
               const name = r.customer_name || "Cliente";
-              const msg = `Olá, ${name}! 👋\nPassando pra lembrar do retorno do veículo ${plate}.\nPosso agendar pra você? (Previsto: ${formatDate(
-                r.due_date
-              )})`;
+              const msg = buildReturnMessage(name, plate);
 
               return (
                 <div
@@ -231,14 +254,19 @@ export default function Returns() {
                         <div className="text-base font-semibold text-[var(--title)]">
                           {plate}
                         </div>
-                        <Badge tone={tone(r.status) as any}>{label(r.status)}</Badge>
+                        <Badge tone={tone(r.status) as any}>
+                          {label(r.status)}
+                        </Badge>
                       </div>
                       <div className="mt-1 text-xs text-[var(--muted)]">
                         {name}
                         {r.customer_phone ? ` • ${r.customer_phone}` : ""}
                       </div>
                       <div className="mt-2 text-xs text-[var(--muted)]">
-                        Previsto: <span className="text-[var(--title)]">{formatDate(r.due_date)}</span>
+                        Previsto:{" "}
+                        <span className="text-[var(--title)]">
+                          {formatDate(r.due_date)}
+                        </span>
                       </div>
                     </div>
 
@@ -257,10 +285,17 @@ export default function Returns() {
                       </a>
 
                       <button
-                        onClick={() => setRowStatus(r.id, r.status === "sent" ? "done" : "sent")}
+                        onClick={() =>
+                          setRowStatus(
+                            r.id,
+                            r.status === "sent" ? "done" : "sent"
+                          )
+                        }
                         className="h-10 rounded-2xl bg-[color:rgba(255,255,255,0.06)] px-4 text-xs font-semibold text-[var(--title)] hover:bg-[color:rgba(255,255,255,0.10)]"
                       >
-                        {r.status === "sent" ? "Marcar concluído" : "Marcar enviado"}
+                        {r.status === "sent"
+                          ? "Marcar concluído"
+                          : "Marcar enviado"}
                       </button>
 
                       <button
