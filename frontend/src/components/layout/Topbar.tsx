@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "../ui/Input";
 import { Badge } from "../ui/Badge";
@@ -22,18 +22,38 @@ export default function Topbar({ pathname, onOpenMenu }: TopbarProps) {
   const title = titleFromPath(pathname);
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const desktopInputRef = useRef<HTMLInputElement | null>(null);
+
+  function focusSearch() {
+    const input =
+      desktopInputRef.current ||
+      (document.getElementById("topbar-quick-search") as HTMLInputElement | null);
+
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  }
 
   function runSearch() {
     const term = (search || "").trim();
 
-    navigate(
-      term
-        ? `/app/services?q=${encodeURIComponent(term)}`
-        : "/app/services"
-    );
+    if (!term) {
+      focusSearch();
+      return;
+    }
+
+    navigate(`/app/services?q=${encodeURIComponent(term)}`);
   }
 
   function handleInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      runSearch();
+    }
+  }
+
+  function handleInputKeyUp(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault();
       runSearch();
@@ -44,21 +64,28 @@ export default function Topbar({ pathname, onOpenMenu }: TopbarProps) {
     function onGlobalKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-
-        const input = document.querySelector(
-          'input[placeholder*="Buscar rápido"]'
-        ) as HTMLInputElement | null;
-
-        if (input) {
-          input.focus();
-          input.select();
-        }
+        focusSearch();
       }
     }
 
+    function onQuickSearchRun() {
+      runSearch();
+    }
+
+    function onQuickSearchFocus() {
+      focusSearch();
+    }
+
     window.addEventListener("keydown", onGlobalKeyDown);
-    return () => window.removeEventListener("keydown", onGlobalKeyDown);
-  }, []);
+    window.addEventListener("boxrota:quick-search-run", onQuickSearchRun as EventListener);
+    window.addEventListener("boxrota:quick-search-focus", onQuickSearchFocus as EventListener);
+
+    return () => {
+      window.removeEventListener("keydown", onGlobalKeyDown);
+      window.removeEventListener("boxrota:quick-search-run", onQuickSearchRun as EventListener);
+      window.removeEventListener("boxrota:quick-search-focus", onQuickSearchFocus as EventListener);
+    };
+  }, [search]);
 
   return (
     <div className="sticky top-0 z-30 border-b border-[var(--border)] bg-[color:rgba(11,16,32,0.72)] backdrop-blur">
@@ -91,11 +118,14 @@ export default function Topbar({ pathname, onOpenMenu }: TopbarProps) {
 
           <div className="hidden w-[420px] lg:block">
             <Input
+              id="topbar-quick-search"
+              inputRef={desktopInputRef}
               placeholder="Buscar rápido: placa, cliente, telefone, OS..."
               rightHint="Ctrl K"
               value={search}
               onChange={setSearch}
               onKeyDown={handleInputKeyDown}
+              onKeyUp={handleInputKeyUp}
             />
           </div>
 
@@ -116,6 +146,7 @@ export default function Topbar({ pathname, onOpenMenu }: TopbarProps) {
             value={search}
             onChange={setSearch}
             onKeyDown={handleInputKeyDown}
+            onKeyUp={handleInputKeyUp}
           />
         </div>
       </div>

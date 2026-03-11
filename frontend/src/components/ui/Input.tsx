@@ -1,11 +1,14 @@
 import React from "react";
 
 type InputProps = {
+  id?: string;
+  inputRef?: React.Ref<HTMLInputElement>;
   placeholder?: string;
   rightHint?: string;
   value?: string;
   onChange?: (v: string) => void;
   onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>;
+  onKeyUp?: React.KeyboardEventHandler<HTMLInputElement>;
   onFocus?: React.FocusEventHandler<HTMLInputElement>;
   onBlur?: React.FocusEventHandler<HTMLInputElement>;
   type?: string;
@@ -14,11 +17,14 @@ type InputProps = {
 };
 
 export function Input({
+  id,
+  inputRef,
   placeholder,
   rightHint,
   value,
   onChange,
   onKeyDown,
+  onKeyUp,
   onFocus,
   onBlur,
   type = "text",
@@ -28,10 +34,13 @@ export function Input({
   return (
     <div className="relative">
       <input
+        id={id}
+        ref={inputRef}
         type={type}
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
         onKeyDown={onKeyDown}
+        onKeyUp={onKeyUp}
         onFocus={onFocus}
         onBlur={onBlur}
         placeholder={placeholder}

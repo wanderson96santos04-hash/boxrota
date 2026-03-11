@@ -223,22 +223,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  function focusQuickSearch() {
-    const input = document.getElementById(
-      "topbar-quick-search"
-    ) as HTMLInputElement | null;
-
-    if (!input) return;
-
-    const term = (input.value || "").trim();
-
-    if (term) {
-      navigate(`/app/services?q=${encodeURIComponent(term)}`);
-      return;
-    }
-
-    input.focus();
-    input.select();
+  function runQuickSearchFromButton() {
+    window.dispatchEvent(new CustomEvent("boxrota:quick-search-run"));
   }
 
   useEffect(() => {
@@ -320,7 +306,7 @@ export default function Dashboard() {
 
             <button
               type="button"
-              onClick={focusQuickSearch}
+              onClick={runQuickSearchFromButton}
               className="inline-flex max-w-full items-center gap-3 rounded-2xl border border-[color:rgba(47,107,255,0.22)] bg-[color:rgba(47,107,255,0.10)] px-4 py-2 text-sm font-semibold text-[var(--title)] transition hover:bg-[color:rgba(47,107,255,0.16)]"
             >
               <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-[color:rgba(255,255,255,0.10)] text-xs">
