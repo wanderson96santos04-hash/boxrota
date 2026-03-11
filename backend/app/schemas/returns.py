@@ -16,7 +16,7 @@ class ReturnRuleOut(BaseModel):
 
 class ReturnRuleUpsert(BaseModel):
     name: str = Field(default="Retorno", min_length=2, max_length=80)
-    days_after: int = Field(default=180, ge=1, le=3650)
+    days_after: int = Field(default=180, ge=0, le=3650)
     active: bool = Field(default=True)
 
 
