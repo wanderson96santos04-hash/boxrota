@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import api from "../../lib/api";
-import type { AppShellOutletContext } from "../../components/layout/AppShell";
 
 type ServiceRow = {
   plate: string;
@@ -220,24 +219,23 @@ function mapStatusToLabel(status: string): ServiceRow["status"] {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const {
-    quickSearchValue,
-    focusQuickSearch,
-  } = useOutletContext<AppShellOutletContext>();
-
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   function handleQuickSearchButton() {
-    const term = (quickSearchValue || "").trim();
+    const input = document.getElementById(
+      "topbar-quick-search"
+    ) as HTMLInputElement | null;
+
+    const term = (input?.value || "").trim();
 
     if (term) {
       navigate(`/app/services?q=${encodeURIComponent(term)}`);
       return;
     }
 
-    focusQuickSearch();
+    navigate("/app/services");
   }
 
   useEffect(() => {
