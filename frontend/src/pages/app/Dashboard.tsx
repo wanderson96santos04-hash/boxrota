@@ -223,21 +223,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  function handleQuickSearchButton() {
-    const input = document.getElementById(
-      "topbar-quick-search"
-    ) as HTMLInputElement | null;
-
-    const term = (input?.value || "").trim();
-
-    if (term) {
-      navigate(`/app/services?q=${encodeURIComponent(term)}`);
-      return;
-    }
-
-    navigate("/app/services");
-  }
-
   useEffect(() => {
     let alive = true;
 
@@ -314,20 +299,6 @@ export default function Dashboard() {
               />
               {error ? "Atenção" : "Online"}
             </Pill>
-
-            <button
-              type="button"
-              onClick={handleQuickSearchButton}
-              className="inline-flex max-w-full items-center gap-3 rounded-2xl border border-[color:rgba(47,107,255,0.22)] bg-[color:rgba(47,107,255,0.10)] px-4 py-2 text-sm font-semibold text-[var(--title)] transition hover:bg-[color:rgba(47,107,255,0.16)]"
-            >
-              <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-[color:rgba(255,255,255,0.10)] text-xs">
-                ⌕
-              </span>
-              <span>Busca rápida</span>
-              <span className="rounded-lg border border-[var(--border)] bg-[color:rgba(255,255,255,0.04)] px-2 py-1 text-[10px] font-medium text-[var(--muted)]">
-                Ctrl K
-              </span>
-            </button>
           </div>
         </div>
 
