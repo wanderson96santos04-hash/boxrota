@@ -180,7 +180,7 @@ export default function ServiceDetail() {
         part_id: selectedPart.id,
         description: selectedPart.name,
         qty: q,
-        unit_price: Number(selectedPart.price || 0),
+        unit_price: 0,
       });
 
       setSelectedPartId("");
@@ -323,6 +323,10 @@ export default function ServiceDetail() {
           >
             {saving ? "Adicionando..." : "Adicionar peça"}
           </button>
+        </div>
+
+        <div className="mt-3 rounded-2xl border border-dashed border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] px-4 py-3 text-xs text-[var(--muted)]">
+          Ao lançar peça do catálogo sem oferta real vinculada, o valor entra como R$ 0,00.
         </div>
 
         <div className="mt-4 space-y-3">
