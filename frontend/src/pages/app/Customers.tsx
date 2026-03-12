@@ -115,7 +115,7 @@ export default function Customers() {
           />
         </div>
 
-        <div className="mt-6 space-y-3">
+        <div className="mt-6">
           {loading ? (
             <div className="text-sm text-[var(--muted)]">Carregando...</div>
           ) : list.length === 0 ? (
@@ -128,35 +128,37 @@ export default function Customers() {
               </div>
             </div>
           ) : (
-            list.map((c) => (
-              <div
-                key={c.id}
-                className="rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-base font-semibold text-[var(--title)]">
-                      {c.name}
+            <div className="max-h-[520px] space-y-3 overflow-y-auto pr-2">
+              {list.map((c) => (
+                <div
+                  key={c.id}
+                  className="rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-base font-semibold text-[var(--title)]">
+                        {c.name}
+                      </div>
+                      <div className="mt-1 text-xs text-[var(--muted)]">
+                        {phoneMask(c.phone)}
+                      </div>
                     </div>
-                    <div className="mt-1 text-xs text-[var(--muted)]">
-                      {phoneMask(c.phone)}
+                    <div className="text-right">
+                      <div className="text-xs font-medium text-[var(--muted)]">
+                        Cliente
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleOpenOs}
+                        className="mt-1 text-xs text-[var(--primary)] hover:underline"
+                      >
+                        Abrir OS → pela placa
+                      </button>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs font-medium text-[var(--muted)]">
-                      Cliente
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleOpenOs}
-                      className="mt-1 text-xs text-[var(--primary)] hover:underline"
-                    >
-                      Abrir OS → pela placa
-                    </button>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
       </Card>
