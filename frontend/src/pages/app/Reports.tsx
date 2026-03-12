@@ -9,6 +9,19 @@ type ReportStats = {
   average_ticket: number;
 };
 
+function money(v: number) {
+  try {
+    return Number(v || 0).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  } catch {
+    return `R$ ${Number(v || 0).toFixed(2).replace(".", ",")}`;
+  }
+}
+
 export default function Reports() {
   const [stats, setStats] = useState<ReportStats | null>(null);
 
@@ -32,7 +45,7 @@ export default function Reports() {
           Faturamento do mês
         </div>
         <div className="text-2xl font-semibold">
-          R$ {stats?.revenue ?? 0}
+          {money(stats?.revenue ?? 0)}
         </div>
       </Card>
 
@@ -41,7 +54,7 @@ export default function Reports() {
           Valor em aberto
         </div>
         <div className="text-2xl font-semibold">
-          R$ {stats?.open_value ?? 0}
+          {money(stats?.open_value ?? 0)}
         </div>
       </Card>
 
@@ -59,7 +72,7 @@ export default function Reports() {
           Ticket médio
         </div>
         <div className="text-2xl font-semibold">
-          R$ {stats?.average_ticket ?? 0}
+          {money(stats?.average_ticket ?? 0)}
         </div>
       </Card>
     </div>
