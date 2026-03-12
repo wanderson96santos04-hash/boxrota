@@ -206,7 +206,7 @@ export default function Services() {
           />
         </div>
 
-        <div className="mt-6 space-y-3">
+        <div className="mt-6">
           {list.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-6">
               <div className="text-sm font-semibold text-[var(--title)]">
@@ -217,39 +217,41 @@ export default function Services() {
               </div>
             </div>
           ) : (
-            list.map((s) => (
-              <Link
-                key={s.id}
-                to={`/app/services/${s.id}`}
-                className="block rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4 hover:bg-[color:rgba(255,255,255,0.04)]"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <div className="text-base font-semibold text-[var(--title)]">
-                        {s.vehicle_plate}
+            <div className="max-h-[520px] space-y-3 overflow-y-auto pr-2">
+              {list.map((s) => (
+                <Link
+                  key={s.id}
+                  to={`/app/services/${s.id}`}
+                  className="block rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4 hover:bg-[color:rgba(255,255,255,0.04)]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <div className="text-base font-semibold text-[var(--title)]">
+                          {s.vehicle_plate}
+                        </div>
+                        <Badge tone={toneFromStatus(s.status) as any}>
+                          {labelFromStatus(s.status)}
+                        </Badge>
                       </div>
-                      <Badge tone={toneFromStatus(s.status) as any}>
-                        {labelFromStatus(s.status)}
-                      </Badge>
+
+                      <div className="mt-1 truncate text-xs text-[var(--muted)]">
+                        {s.customer_name ? s.customer_name : "Cliente não informado"}
+                      </div>
                     </div>
 
-                    <div className="mt-1 truncate text-xs text-[var(--muted)]">
-                      {s.customer_name ? s.customer_name : "Cliente não informado"}
+                    <div className="text-right">
+                      <div className="text-base font-semibold text-[var(--title)]">
+                        {money(Number(s.total_amount || 0))}
+                      </div>
+                      <div className="mt-1 text-xs text-[var(--muted)]">
+                        Abrir →
+                      </div>
                     </div>
                   </div>
-
-                  <div className="text-right">
-                    <div className="text-base font-semibold text-[var(--title)]">
-                      {money(Number(s.total_amount || 0))}
-                    </div>
-                    <div className="mt-1 text-xs text-[var(--muted)]">
-                      Abrir →
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))
+                </Link>
+              ))}
+            </div>
           )}
         </div>
       </Card>
