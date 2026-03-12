@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
@@ -15,12 +15,22 @@ function clearSession() {
   localStorage.removeItem("boxrota_workshop_id");
 }
 
+export type AppShellOutletContext = {
+  quickSearchValue: string;
+  setQuickSearchValue: (value: string) => void;
+  runQuickSearch: () => void;
+  focusQuickSearch: () => void;
+};
+
 export default function AppShell() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
   const [loggingOut, setLoggingOut] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [quickSearchValue, setQuickSearchValue] = useState("");
+
+  const quickSearchInputRef = useRef<HTMLInputElement | null>(null);
 
   const hasRefresh = useMemo(() => {
     const rt = getRefreshToken();
@@ -46,6 +56,32 @@ export default function AppShell() {
     }
   }, [loggingOut, navigate]);
 
+  const focusQuickSearch = useCallback(() => {
+    const input = quickSearchInputRef.current;
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  }, []);
+
+  const runQuickSearch = useCallback(() => {
+    const term = (quickSearchValue || "").trim();
+
+    if (!term) {
+      focusQuickSearch();
+      return;
+    }
+
+    navigate(`/app/services?q=${encodeURIComponent(term)}`);
+  }, [focusQuickSearch, navigate, quickSearchValue]);
+
+  const outletContext: AppShellOutletContext = {
+    quickSearchValue,
+    setQuickSearchValue,
+    runQuickSearch,
+    focusQuickSearch,
+  };
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-[var(--bg)] text-[var(--text)]">
       <div className="mx-auto max-w-[1200px]">
@@ -58,6 +94,10 @@ export default function AppShell() {
             <Topbar
               pathname={pathname}
               onOpenMenu={() => setMobileMenuOpen(true)}
+              quickSearchValue={quickSearchValue}
+              setQuickSearchValue={setQuickSearchValue}
+              runQuickSearch={runQuickSearch}
+              quickSearchInputRef={quickSearchInputRef}
             />
 
             <div className="px-4 pt-3 lg:px-6">
@@ -75,7 +115,7 @@ export default function AppShell() {
             </div>
 
             <div className="min-w-0 overflow-x-hidden px-4 pb-8 pt-4 lg:px-6 lg:pb-10">
-              <Outlet />
+              <Outlet context={outletContext} />
             </div>
           </main>
         </div>

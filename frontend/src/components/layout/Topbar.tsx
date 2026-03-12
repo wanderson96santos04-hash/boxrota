@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "../ui/Input";
 import { Badge } from "../ui/Badge";
@@ -16,47 +16,34 @@ function titleFromPath(pathname: string) {
 type TopbarProps = {
   pathname: string;
   onOpenMenu?: () => void;
+  quickSearchValue: string;
+  setQuickSearchValue: (value: string) => void;
+  runQuickSearch: () => void;
+  quickSearchInputRef: React.RefObject<HTMLInputElement | null>;
 };
 
-export default function Topbar({ pathname, onOpenMenu }: TopbarProps) {
+export default function Topbar({
+  pathname,
+  onOpenMenu,
+  quickSearchValue,
+  setQuickSearchValue,
+  runQuickSearch,
+  quickSearchInputRef,
+}: TopbarProps) {
   const title = titleFromPath(pathname);
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
-  const desktopInputRef = useRef<HTMLInputElement | null>(null);
-
-  function focusSearch() {
-    const input =
-      desktopInputRef.current ||
-      (document.getElementById("topbar-quick-search") as HTMLInputElement | null);
-
-    if (input) {
-      input.focus();
-      input.select();
-    }
-  }
-
-  function runSearch() {
-    const term = (search || "").trim();
-
-    if (!term) {
-      focusSearch();
-      return;
-    }
-
-    navigate(`/app/services?q=${encodeURIComponent(term)}`);
-  }
 
   function handleInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault();
-      runSearch();
+      runQuickSearch();
     }
   }
 
   function handleInputKeyUp(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault();
-      runSearch();
+      runQuickSearch();
     }
   }
 
@@ -64,28 +51,17 @@ export default function Topbar({ pathname, onOpenMenu }: TopbarProps) {
     function onGlobalKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        focusSearch();
+        const input = quickSearchInputRef.current;
+        if (input) {
+          input.focus();
+          input.select();
+        }
       }
     }
 
-    function onQuickSearchRun() {
-      runSearch();
-    }
-
-    function onQuickSearchFocus() {
-      focusSearch();
-    }
-
     window.addEventListener("keydown", onGlobalKeyDown);
-    window.addEventListener("boxrota:quick-search-run", onQuickSearchRun as EventListener);
-    window.addEventListener("boxrota:quick-search-focus", onQuickSearchFocus as EventListener);
-
-    return () => {
-      window.removeEventListener("keydown", onGlobalKeyDown);
-      window.removeEventListener("boxrota:quick-search-run", onQuickSearchRun as EventListener);
-      window.removeEventListener("boxrota:quick-search-focus", onQuickSearchFocus as EventListener);
-    };
-  }, [search]);
+    return () => window.removeEventListener("keydown", onGlobalKeyDown);
+  }, [quickSearchInputRef]);
 
   return (
     <div className="sticky top-0 z-30 border-b border-[var(--border)] bg-[color:rgba(11,16,32,0.72)] backdrop-blur">
@@ -119,11 +95,11 @@ export default function Topbar({ pathname, onOpenMenu }: TopbarProps) {
           <div className="hidden w-[420px] lg:block">
             <Input
               id="topbar-quick-search"
-              inputRef={desktopInputRef}
+              inputRef={quickSearchInputRef}
               placeholder="Buscar rápido: placa, cliente, telefone, OS..."
               rightHint="Ctrl K"
-              value={search}
-              onChange={setSearch}
+              value={quickSearchValue}
+              onChange={setQuickSearchValue}
               onKeyDown={handleInputKeyDown}
               onKeyUp={handleInputKeyUp}
             />
@@ -143,8 +119,8 @@ export default function Topbar({ pathname, onOpenMenu }: TopbarProps) {
         <div className="mt-3 lg:hidden">
           <Input
             placeholder="Buscar: placa, cliente, telefone, OS..."
-            value={search}
-            onChange={setSearch}
+            value={quickSearchValue}
+            onChange={setQuickSearchValue}
             onKeyDown={handleInputKeyDown}
             onKeyUp={handleInputKeyUp}
           />
