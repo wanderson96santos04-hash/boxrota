@@ -169,7 +169,7 @@ export default function Vehicles() {
           />
         </div>
 
-        <div className="mt-6 space-y-3">
+        <div className="mt-6">
           {loading ? (
             <div className="text-sm text-[var(--muted)]">Carregando...</div>
           ) : list.length === 0 ? (
@@ -183,42 +183,46 @@ export default function Vehicles() {
               </div>
             </div>
           ) : (
-            list.map((v) => (
-              <div
-                key={v.id}
-                className="rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <div className="text-base font-semibold text-[var(--title)]">
-                        {v.plate}
+            <div className="max-h-[520px] space-y-3 overflow-y-auto pr-2">
+              {list.map((v) => (
+                <div
+                  key={v.id}
+                  className="rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <div className="text-base font-semibold text-[var(--title)]">
+                          {v.plate}
+                        </div>
+                        <Badge tone="neutral">Histórico</Badge>
                       </div>
-                      <Badge tone="neutral">Histórico</Badge>
+
+                      <div className="mt-1 text-xs text-[var(--muted)]">
+                        {v.customer_name
+                          ? `${v.customer_name}${
+                              v.customer_phone ? ` • ${v.customer_phone}` : ""
+                            }`
+                          : "Cliente não vinculado"}
+                      </div>
                     </div>
 
-                    <div className="mt-1 text-xs text-[var(--muted)]">
-                      {v.customer_name
-                        ? `${v.customer_name}${v.customer_phone ? ` • ${v.customer_phone}` : ""}`
-                        : "Cliente não vinculado"}
+                    <div className="text-right">
+                      <div className="text-xs font-medium text-[var(--muted)]">
+                        Próximo passo
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleOpenOs}
+                        className="mt-1 text-xs text-[var(--primary)] hover:underline"
+                      >
+                        Abrir OS → por placa
+                      </button>
                     </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-xs font-medium text-[var(--muted)]">
-                      Próximo passo
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleOpenOs}
-                      className="mt-1 text-xs text-[var(--primary)] hover:underline"
-                    >
-                      Abrir OS → por placa
-                    </button>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
       </Card>
