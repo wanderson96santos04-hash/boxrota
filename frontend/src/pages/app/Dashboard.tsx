@@ -220,11 +220,25 @@ function mapStatusToLabel(status: string): ServiceRow["status"] {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { runQuickSearch } = useOutletContext<AppShellOutletContext>();
+  const {
+    quickSearchValue,
+    focusQuickSearch,
+  } = useOutletContext<AppShellOutletContext>();
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  function handleQuickSearchButton() {
+    const term = (quickSearchValue || "").trim();
+
+    if (term) {
+      navigate(`/app/services?q=${encodeURIComponent(term)}`);
+      return;
+    }
+
+    focusQuickSearch();
+  }
 
   useEffect(() => {
     let alive = true;
@@ -305,7 +319,7 @@ export default function Dashboard() {
 
             <button
               type="button"
-              onClick={runQuickSearch}
+              onClick={handleQuickSearchButton}
               className="inline-flex max-w-full items-center gap-3 rounded-2xl border border-[color:rgba(47,107,255,0.22)] bg-[color:rgba(47,107,255,0.10)] px-4 py-2 text-sm font-semibold text-[var(--title)] transition hover:bg-[color:rgba(47,107,255,0.16)]"
             >
               <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-[color:rgba(255,255,255,0.10)] text-xs">
