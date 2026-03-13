@@ -271,7 +271,7 @@ export default function Parts() {
             </div>
           )}
 
-          <div className="space-y-3">
+          <div>
             {loading ? (
               <div className="text-sm text-[var(--muted)]">Carregando peças...</div>
             ) : list.length === 0 ? (
@@ -285,51 +285,53 @@ export default function Parts() {
                 </div>
               </div>
             ) : (
-              list.map((part) => {
-                return (
-                  <div
-                    key={part.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={handleOpenServices}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleOpenServices();
-                      }
-                    }}
-                    className="cursor-pointer rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4 transition hover:border-[var(--primary)] hover:bg-[color:rgba(255,255,255,0.04)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <div className="text-base font-semibold text-[var(--title)]">
-                            {part.name}
+              <div className="max-h-[520px] space-y-3 overflow-y-auto pr-2">
+                {list.map((part) => {
+                  return (
+                    <div
+                      key={part.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={handleOpenServices}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleOpenServices();
+                        }
+                      }}
+                      className="cursor-pointer rounded-2xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.02)] p-4 transition hover:border-[var(--primary)] hover:bg-[color:rgba(255,255,255,0.04)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <div className="text-base font-semibold text-[var(--title)]">
+                              {part.name}
+                            </div>
+
+                            {part.sku ? (
+                              <Badge tone="neutral">{part.sku}</Badge>
+                            ) : null}
                           </div>
 
-                          {part.sku ? (
-                            <Badge tone="neutral">{part.sku}</Badge>
-                          ) : null}
+                          <div className="mt-1 text-xs text-[var(--muted)]">
+                            Estoque: {Number(part.stock_qty || 0)}
+                          </div>
                         </div>
 
-                        <div className="mt-1 text-xs text-[var(--muted)]">
-                          Estoque: {Number(part.stock_qty || 0)}
-                        </div>
-                      </div>
+                        <div className="text-right">
+                          <div className="text-xs text-[var(--muted)]">
+                            Catálogo interno
+                          </div>
 
-                      <div className="text-right">
-                        <div className="text-xs text-[var(--muted)]">
-                          Catálogo interno
-                        </div>
-
-                        <div className="mt-2 text-xs font-medium text-[var(--primary)]">
-                          Abrir OS →
+                          <div className="mt-2 text-xs font-medium text-[var(--primary)]">
+                            Abrir OS →
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>
